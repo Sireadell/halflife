@@ -1,0 +1,19 @@
+{
+  "name": "halflife",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Halflife: a certification that expires. Remembers every agent it has certified, re-certifies them, and revokes the certificate when the agent gets worse.",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "express": "^4.19.2"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  }
+}
