@@ -74,6 +74,86 @@ The payment is not decoration. Halflife certifies nothing itself, it buys
 certification from another service, so one agent paying another is the honest
 shape of the product rather than something added on top of it.
 
+## Paying for a re-certification
+
+The paying client is built and tested. It lives in
+[`src/lib/paidStressproof.js`](src/lib/paidStressproof.js) and is an
+alternative to the free client, passed into the certifier as `stressproof`.
+The certifier itself did not change: the dependency was always injected for
+exactly this.
+
+The flow is four calls, and it is four rather than one on purpose:
+
+1. Ask StressProof for a run, with standing consent. Free, commits nothing.
+2. Try to start it with no payment. The 402 refusal is the bill.
+3. Check the bill against what this deployment agreed to pay, then sign it.
+4. Start the run with the payment attached, and read the report back.
+
+Step 3 is the one worth spelling out. The bill is written by the other side, so
+the amount, the token, the network and the recipient are all checked against
+configuration before anything is signed. An upstream that was repriced,
+misconfigured or compromised cannot drain the wallet one re-certification at a
+time, because a bill halflife did not agree to is refused and journalled
+instead of paid.
+
+**A failed payment never produces a certification result and never revokes
+anything.** It throws, which the certifier already treats as an upstream it
+could not reach: the run is unmeasurable, the remembered verdict is left
+exactly as it was, and the certificate keeps standing until its normal expiry
+arrives and it goes stale through the ordinary staleness path. There is no
+special early-expiry state for a payment problem, because halflife being unable
+to pay is halflife's failure and says nothing at all about the agent.
+
+**A failed payment is still written to the journal**, with what failed and
+when, worded so that nobody reads it as a finding about the agent. Refusing
+quietly would make "we tried and could not pay" look identical to "nobody ever
+tried", and an invisible failure is the exact thing this project exists to
+catch.
+
+**Money that was spent is findable afterwards.** The journal line for a settled
+payment carries the amount, the network, who was paid, and the transaction hash
+as soon as one exists, so anyone auditing a re-certification can check the
+transaction on Base without taking halflife's word for it. When StressProof
+returns no readable receipt the line says the hash is missing rather than
+implying one exists.
+
+### Configuration
+
+Every one of these is required, and none of them has a default. If any is
+missing, halflife refuses to attempt a paid run rather than falling back to
+StressProof's free demo route, because a rate-limited demo answering in place
+of a paid run would look exactly like success.
+
+| Variable | What it is |
+|---|---|
+| `HALFLIFE_STRESSPROOF_URL` | Base URL of the StressProof deployment to buy from |
+| `HALFLIFE_PAYER_ADDRESS` | The wallet that pays, and the wallet named in the target's consent file |
+| `HALFLIFE_PAYER_PRIVATE_KEY` | The key for that wallet. Secret. Read from the environment only, never written to a file in this repository, never logged and never journalled |
+| `HALFLIFE_PAYMENT_NETWORK` | `base` or `base-sepolia` |
+| `HALFLIFE_X402_FACILITATOR` | The facilitator that settles the payment. Recorded on the journal line so an auditor knows which one settled it. Halflife does not call it directly; StressProof does, as the party being paid |
+
+One optional setting, `HALFLIFE_MAX_PAYMENT_USDC`, is the ceiling on a single
+payment. It defaults to `0.25`, which is StressProof's published price. It has
+a default because it is not a secret and because a missing ceiling is more
+dangerous than a conservative one.
+
+### What has not happened yet
+
+**No real payment has settled.** Not one. The code is written and tested
+against fakes for the facilitator, the chain, the signer and StressProof
+itself, so the whole flow runs with no network, no wallet and no money. No
+transaction hash is claimed here, and none will be until one exists.
+
+The signing step is the one part of this that no test exercises: signing needs
+a real key, and no key belongs in a test. It is loaded lazily and only when a
+payment is actually being made, so the suite never even imports a signing
+library.
+
+What remains before a real payment can settle is listed in
+[`docs/PARTNERS.md`](docs/PARTNERS.md): a StressProof deployment reachable at a
+public URL, a funded wallet, and a target whose owner has published a standing
+consent file naming that wallet.
+
 ## Status
 
 Early. The memory layer works and is tested, including the cold-start case: a
@@ -81,7 +161,7 @@ brand new process recalls what an earlier process wrote. That test is in
 [`test/memory.test.js`](test/memory.test.js) and it is the one test this
 project cannot survive failing.
 
-**55 tests passing.** Counted, not estimated. Run `npm test`.
+**78 tests passing.** Counted, not estimated. Run `npm test`.
 
 The certifier is built and tested. It is in
 [`src/lib/certifier.js`](src/lib/certifier.js) and it is the one operation
@@ -97,13 +177,14 @@ gap in checking. Halflife's own downtime cannot revoke anybody's certificate.
 The remembered verdict is also left in place through a failed check, so an
 outage cannot quietly turn a later drop into a fresh certificate.
 
-Today the certifier calls StressProof's free demo route. The paid route needs a
-consent file published at the target's origin and a settled x402 payment, and
-neither exists yet, so no client for it is claimed.
+The certifier's default client is still StressProof's free demo route, which is
+what the tests run against. The paying client is built and tested beside it and
+is described above. It has never sent a real payment, and the README says so
+there rather than leaving a reader to assume otherwise.
 
-Not built yet: the HTTP surface, the public page, and both partner integrations.
-Nothing in this README describes something that does not exist, and it stays
-that way as the build goes.
+Not built yet: the HTTP surface, the public page, the Virtuals integration, and
+a settled payment on Base. Nothing in this README describes something that does
+not exist, and it stays that way as the build goes.
 
 The revocation rule is built and tested. It is in
 [`src/lib/drift.js`](src/lib/drift.js) and it is pure, so a revocation can be

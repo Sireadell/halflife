@@ -48,7 +48,33 @@ until one existed. Halflife's first paid re-certification is that transaction.
 **Acceptance test:** the demo shows a re-certification run, and the settled
 transaction is checkable on Base afterwards by anyone with the hash.
 
-**Blocked on:** StressProof deployed to a public URL, and a funded wallet.
+**Built:** the paying client, in `src/lib/paidStressproof.js`, with the money
+side in `src/lib/x402Payment.js`. It asks StressProof for a run under standing
+consent, reads the 402 bill, checks the amount, token, network and recipient
+against configuration before signing anything, pays, and writes what it spent
+to the journal with the transaction hash. A failed payment produces no
+certification result, revokes nothing, and is still journalled. Tested against
+fakes for the facilitator, the chain, the signer and StressProof, so the suite
+runs with no network, no wallet and no money.
+
+**Not done:** no real payment has settled. No transaction hash is claimed until
+one exists, which is the same rule StressProof's honesty table has followed
+from the start.
+
+**Blocked on, precisely:**
+
+1. StressProof deployed to a public URL, with `STRESSPROOF_PAY_TO` set so its
+   paid route is live rather than refusing as misconfigured.
+2. A funded wallet on Base, holding enough USDC for the 0.25 per run plus gas,
+   with its key supplied to halflife through `HALFLIFE_PAYER_PRIVATE_KEY` and
+   never written into either repository.
+3. A target agent whose owner has published a standing consent file at its own
+   origin naming that exact wallet, that exact URL, an expiry date inside
+   StressProof's 30 day ceiling, and a testing frequency. StressProof re-reads
+   all five fields before every run.
+4. The owner inspecting the exact wallet, amount, recipient, network and
+   expected fee before the first payment goes out. That is a decision made by
+   hand, once, by a person.
 
 ## Partner 2: Virtuals
 

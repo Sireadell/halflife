@@ -45,13 +45,18 @@ export const DEFAULT_STRESSPROOF_URL =
 /**
  * The default StressProof client, over its free demo route.
  *
- * This is deliberately the only route implemented here. StressProof's paid
- * route needs two things halflife does not have yet: a consent file published
- * at the target's own origin, and a settled x402 payment. Writing an untested
- * client for a flow nothing has ever completed would be claiming a capability
- * that does not exist, which is the one thing this project has said it will not
- * do. When the payment work lands it arrives as a different client passed into
- * the constructor, and nothing in this file changes.
+ * Still the default, and still the only route implemented in this file. The
+ * paying client lives in paidStressproof.js and is passed into the constructor
+ * as `stressproof`, exactly as this comment always said it would be. Nothing
+ * in this file changed to accommodate it, which was the point of injecting the
+ * dependency rather than importing one.
+ *
+ * The free route stays the default deliberately. It costs nothing, it needs no
+ * wallet, and it is what the demo and the test suite run against. A deployment
+ * that means to pay says so by constructing the paid client, so there is no
+ * configuration mistake that silently turns a paid product into a free one.
+ * The reverse mistake is guarded on the other side: the paid client refuses to
+ * exist at all on incomplete configuration rather than falling back here.
  */
 export function createStressProofClient({
   baseUrl = DEFAULT_STRESSPROOF_URL,
