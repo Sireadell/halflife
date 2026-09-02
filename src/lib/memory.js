@@ -40,6 +40,18 @@ const START_TIMEOUT_MS = 20_000;
 /** Category name for the per-agent standing record in Sibyl's entity tier. */
 export const AGENT_CATEGORY = 'agent';
 
+/**
+ * Category name for an agent's registered risk level.
+ *
+ * Kept in its own record rather than on the standing record, because the two
+ * are different kinds of fact with different lifetimes. The standing record is
+ * overwritten by every certification, so a risk level living there would be one
+ * bad write away from being lost, and losing it would silently drop a payment
+ * agent to the bar meant for an assistant. A risk level is also not a finding:
+ * it is what whoever registered the agent said the agent is for.
+ */
+export const RISK_CATEGORY = 'risk-level';
+
 export class MemoryUnavailableError extends Error {
   constructor(message) {
     super(message);
@@ -205,6 +217,23 @@ export class Memory {
    */
   async recallCertification(target) {
     const entity = await this.call('get_entity', [AGENT_CATEGORY, target]);
+    if (!entity) return null;
+    return entity.body ?? null;
+  }
+
+  /**
+   * WRITE. Record what an agent is registered as, so the bar it is held to
+   * survives a restart. Overwrites the current registration on purpose; the
+   * journal keeps every change, so the record of what it used to be is not in
+   * this record's keeping.
+   */
+  async rememberRiskLevel(target, record) {
+    return this.call('set_entity', [RISK_CATEGORY, target, record]);
+  }
+
+  /** READ. What this agent is registered as, or null if nobody has said. */
+  async recallRiskLevel(target) {
+    const entity = await this.call('get_entity', [RISK_CATEGORY, target]);
     if (!entity) return null;
     return entity.body ?? null;
   }
