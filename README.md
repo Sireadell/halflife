@@ -59,6 +59,19 @@ to a broken memory. `memory/bridge.py` catches that one case specifically and
 turns it into a successful empty answer, so halflife can always tell "I have
 never seen this agent" apart from "I cannot remember anything right now".
 
+## Partner integrations
+
+Halflife pays StressProof in USDC on Base for every re-certification, and
+registers on Virtuals' Agent Commerce Protocol so other agents can hire it.
+Both are required parts of the build, not optional extras, and both must be
+seen working rather than merely claimed. See
+[`docs/PARTNERS.md`](docs/PARTNERS.md) for what each one has to demonstrate
+before it counts as done.
+
+The payment is not decoration. Halflife certifies nothing itself, it buys
+certification from another service, so one agent paying another is the honest
+shape of the product rather than something added on top of it.
+
 ## Status
 
 Early. The memory layer works and is tested, including the cold-start case: a
@@ -66,12 +79,17 @@ brand new process recalls what an earlier process wrote. That test is in
 [`test/memory.test.js`](test/memory.test.js) and it is the one test this
 project cannot survive failing.
 
-**6 tests passing.** Counted, not estimated. Run `npm test`.
+**17 tests passing.** Counted, not estimated. Run `npm test`.
 
-Not built yet: the certifier that calls StressProof, the drift comparison, the
-revocation rule, the HTTP surface, the public page. Nothing in this README
-describes something that does not exist, and it stays that way as the build
-goes.
+Not built yet: the certifier that calls StressProof, the HTTP surface, the
+public page, and both partner integrations. Nothing in this README describes
+something that does not exist, and it stays that way as the build goes.
+
+The revocation rule is built and tested. It is in
+[`src/lib/drift.js`](src/lib/drift.js) and it is pure, so a revocation can be
+argued with rather than taken on faith. Revocation follows the verdict, not the
+raw score: agents are allowed to vary between runs, and a run that could not
+measure enough never revokes anything.
 
 ## Running it
 
