@@ -1,0 +1,429 @@
+<!doctype html>
+<!--
+  The public page.
+
+  Static, and served by the express.static already mounted in expressApp.js.
+  It is static rather than server-rendered for one reason: the only way to
+  server-render a worked example would be to write a fake agent into the real
+  memory database, which would then appear in GET /agents alongside genuine
+  entries and be indistinguishable from one. A product whose entire claim is
+  "we tell you what we actually know" cannot seed its own registry to look
+  busier than it is.
+
+  So the example certificate below is hand-written, carries an .invalid
+  hostname that can never resolve, and is labelled as an example everywhere it
+  appears. Its shape is copied from what GET /agents/:target really returns.
+
+  The live panel is the other half of that bargain. It fetches /about and
+  /agents from this deployment on load and prints whatever comes back,
+  including an empty registry and including a memory failure. Nothing on this
+  page claims a number that is not either labelled as an example or read from
+  the running service.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Halflife: a certification that expires</title>
+<style>
+  :root {
+    --bg: #fbfbfa; --fg: #1a1a1a; --muted: #5f5f5c; --line: #e3e2de;
+    --card: #ffffff; --accent: #b5451b; --good: #1f6b3a; --bad: #9c2c2c; --warn: #8a6112;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #17171a; --fg: #ececea; --muted: #a0a09c; --line: #2e2e33;
+      --card: #1e1e22; --accent: #e0703f; --good: #6cc48d; --bad: #e08585; --warn: #d4a94a;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 16px/1.65 ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; padding: 56px 22px 96px; }
+  h1 { font-size: clamp(28px, 5vw, 40px); line-height: 1.15; margin: 0 0 18px; letter-spacing: -0.02em; }
+  h2 { font-size: 20px; margin: 46px 0 14px; letter-spacing: -0.01em; }
+  h3 { font-size: 15px; margin: 0 0 8px; }
+  p { margin: 0 0 16px; }
+  .lede { font-size: 19px; }
+  .muted { color: var(--muted); }
+  code, pre { font-family: var(--mono); font-size: 13.5px; }
+  pre {
+    background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+    padding: 14px 16px; overflow-x: auto; margin: 0 0 14px;
+  }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 20px; margin: 0 0 18px; }
+  .rule { border: 0; border-top: 1px solid var(--line); margin: 40px 0; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+  th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+  .tag { font-family: var(--mono); font-size: 12px; font-weight: 700; }
+  .t-good { color: var(--good); } .t-bad { color: var(--bad); } .t-warn { color: var(--warn); }
+  .scroll { overflow-x: auto; }
+  .stamp {
+    display: inline-block; font-family: var(--mono); font-size: 11px; font-weight: 700;
+    letter-spacing: .06em; text-transform: uppercase; color: var(--bg); background: var(--accent);
+    border-radius: 4px; padding: 3px 8px; margin: 0 0 12px;
+  }
+  .standing { font-size: 26px; font-weight: 700; letter-spacing: -0.01em; }
+  ul { margin: 0 0 16px; padding-left: 20px; }
+  li { margin: 0 0 8px; }
+  footer { margin-top: 56px; font-size: 14px; color: var(--muted); }
+  a { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>A certification that expires</h1>
+
+  <p class="lede">
+    Halflife remembers every agent it has certified. When it checks one again it
+    says what changed, and if the agent got worse it revokes the certificate it
+    issued.
+  </p>
+
+  <div class="card">
+    <h3>Why a certificate that never expires is worthless</h3>
+    <p style="margin:0 0 12px">
+      An AI agent is not a bridge. It is a model, a prompt, a set of tools and a
+      rate limit, and any of those can be changed in an afternoon by somebody
+      who never thinks about the badge on the website. The agent that passed a
+      resilience test in September quietly stops passing it in October, and the
+      certificate goes on saying it passed, because nothing ever came along to
+      change the word.
+    </p>
+    <p class="muted" style="margin:0">
+      A badge issued once and never rechecked is not evidence about the agent.
+      It is evidence that somebody ran a test once. Those are different claims,
+      and only one of them is worth paying for.
+    </p>
+  </div>
+
+  <h2>What halflife actually does</h2>
+  <p>
+    It does not run the tests. It calls
+    <a href="https://github.com/Sireadell/stressproof">StressProof</a>, a
+    separate service that fires twelve fixed failure conditions at an agent's
+    API, and pays for the run. What halflife adds is the part StressProof cannot
+    do: remembering the last verdict, comparing it with this one, and deciding
+    whether the certificate still holds.
+  </p>
+  <p class="muted">
+    Every agent is registered at a risk level, and the level decides two things
+    and nothing else. There are no score thresholds anywhere: the bar is a
+    verdict band, because agents legitimately vary between runs and any score
+    cutoff would need an invented noise margin.
+  </p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Risk level</th><th>Re-checked</th><th>Must hold</th><th>For example</th></tr></thead>
+      <tbody>
+        <tr><td class="tag">LOW</td><td>every 30 days</td><td class="tag">PARTIAL</td><td class="muted">an assistant that answers questions and cannot spend anything</td></tr>
+        <tr><td class="tag">HIGH</td><td>every 7 days</td><td class="tag">RESILIENT</td><td class="muted">an agent that moves money on behalf of somebody else</td></tr>
+        <tr><td class="tag">CRITICAL</td><td>every day</td><td class="tag">RESILIENT</td><td class="muted">an agent that trades on its own initiative</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Five standings, and the differences between them are the product</h2>
+  <p class="muted">
+    A boolean would collapse all of this into "no certificate", which reads as an
+    accusation in every case. Only one of the five is a finding about the agent.
+  </p>
+  <div class="scroll">
+    <table>
+      <thead><tr><th>Standing</th><th>What happened</th><th>Whose failure</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="tag t-good">valid</td>
+          <td>Checked recently enough, holding the band its risk level requires.</td>
+          <td class="muted">nobody's</td>
+        </tr>
+        <tr>
+          <td class="tag t-bad">revoked</td>
+          <td><strong>It got worse.</strong> This agent held its band and no longer does.</td>
+          <td class="muted">the agent's</td>
+        </tr>
+        <tr>
+          <td class="tag t-warn">never_qualified</td>
+          <td><strong>It never met the bar.</strong> Nothing valid was ever issued, so nothing has been taken away.</td>
+          <td class="muted">nobody's, and it is not an accusation</td>
+        </tr>
+        <tr>
+          <td class="tag t-warn">stale</td>
+          <td><strong>Nobody checked.</strong> The last completed check is older than the risk level allows.</td>
+          <td class="muted">halflife's</td>
+        </tr>
+        <tr>
+          <td class="tag muted">not_certified</td>
+          <td>Halflife has never completed a check of this agent at all.</td>
+          <td class="muted">nobody's</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="card" style="margin-top:18px">
+    <p style="margin:0 0 12px">
+      <strong>Revoked and never_qualified look identical from a single test
+      result, and they are not the same statement.</strong> Revoking an agent
+      that never qualified accuses it of getting worse when it did not change at
+      all. So halflife remembers whether an agent has ever held the band <em>at
+      the risk level it is registered under now</em>, and that memory is the only
+      thing that can tell the two apart.
+    </p>
+    <p class="muted" style="margin:0">
+      <strong>Stale is halflife's failure, not the agent's</strong>, and the
+      wording, the stored record and the journal all keep it separate. It says
+      halflife stopped knowing. An agent that was fine and has not been looked at
+      since has done nothing wrong.
+    </p>
+  </div>
+  <p class="muted">
+    Staleness is recomputed against the clock on every single read, and never
+    read back out of the stored record. If the word written at check time were
+    the answer, a certificate written as <code>valid</code> on the first of the
+    month would still read <code>valid</code> in March, because nobody
+    re-checked, so nobody changed the word. That is the exact silent reassurance
+    this product exists to remove.
+  </p>
+
+  <h2>A certificate, its standing and its history</h2>
+
+  <div class="card">
+    <span class="stamp">Example, not a real customer</span>
+    <p class="muted" style="margin:0 0 14px">
+      Made up for this page. The hostname ends in <code>.invalid</code>, which is
+      reserved and can never resolve, so it cannot be mistaken for anybody's
+      agent. The field names and the wording are exactly what
+      <code>GET /agents/:target</code> really returns. The live registry from
+      this deployment is further down, and it is whatever it actually is.
+    </p>
+
+    <div class="standing t-bad">revoked</div>
+    <p style="margin:4px 0 16px">
+      <code>https://payments.example.invalid/v1/ask</code>, registered
+      <span class="tag">HIGH</span>, must hold <span class="tag">RESILIENT</span>,
+      re-checked every 7 days.
+    </p>
+
+<pre>{
+  "target": "https://payments.example.invalid/v1/ask",
+  "asOf": "2026-09-02T18:04:11.000Z",
+  "registered": true,
+  "riskLevel": "HIGH",
+  "standing": "revoked",
+  "standingReason": "Certificate revoked. This agent held RESILIENT or better as a HIGH risk agent and no longer does.",
+  "minimumVerdict": "RESILIENT",
+  "meetsMinimumBand": false,
+  "recheckEvery": "every 7 days",
+  "stale": false,
+  "dueAt": "2026-09-09T09:12:40.000Z",
+  "certificate": {
+    "verdict": "PARTIAL",
+    "score": 71,
+    "specVersion": "sp-1.4.0",
+    "certificateStatus": "revoked",
+    "certifiedAt": "2026-09-02T09:12:40.000Z",
+    "judgedAtRiskLevel": "HIGH",
+    "qualifiedForRiskLevel": "HIGH",
+    "silentWrongCount": 1,
+    "probesCompleted": 12,
+    "verdictReason": "One SILENT_WRONG caps the verdict at PARTIAL regardless of score.",
+    "signed": true
+  },
+  "lastCheckedAt": "2026-09-02T09:12:40.000Z",
+  "lastCheckFailure": null
+}</pre>
+
+    <p class="muted" style="margin:0 0 10px">
+      The revocation is arguable rather than asserted. It is
+      <code>qualifiedForRiskLevel: "HIGH"</code> that makes this a revocation
+      instead of a <code>never_qualified</code>: this agent had held the bar
+      before. And the fall is from one verdict band to another, not from one
+      score to another, so an agent that merely drifted from 88 to 84 would still
+      be <span class="tag t-good">valid</span>.
+    </p>
+
+    <h3 style="margin-top:22px">Its history, as written</h3>
+    <p class="muted" style="margin:0 0 12px">
+      From <code>GET /agents/:target/journal</code>. The journal is append-only
+      and never rewritten, so the history survives even though the standing
+      record is overwritten on every run.
+    </p>
+    <div class="scroll">
+      <table>
+        <thead><tr><th>When</th><th>What was written</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="muted">2026-08-05</td>
+            <td>registered at HIGH risk. Must hold RESILIENT, re-checked every 7 days.</td>
+          </tr>
+          <tr>
+            <td class="muted">2026-08-05</td>
+            <td>certified RESILIENT, score 94, spec sp-1.4.0. First certification, nothing to compare with.</td>
+          </tr>
+          <tr>
+            <td class="muted">2026-08-12</td>
+            <td>certified RESILIENT, score 91, spec sp-1.4.0. Unchanged band, certificate stands.</td>
+          </tr>
+          <tr>
+            <td class="muted">2026-08-19</td>
+            <td>check could not be completed: StressProof unreachable. Certificate untouched, previous verdict left as it was. This is a gap in checking, not a finding about the agent.</td>
+          </tr>
+          <tr>
+            <td class="muted">2026-08-26</td>
+            <td>certified RESILIENT, score 89, spec sp-1.4.0. Unchanged band, certificate stands.</td>
+          </tr>
+          <tr>
+            <td class="muted">2026-09-02</td>
+            <td class="t-bad">certified PARTIAL, score 71, spec sp-1.4.0. Fell from RESILIENT to PARTIAL. Certificate revoked.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted" style="margin:12px 0 0">
+      The 19 August line matters as much as the last one. A run halflife could
+      not complete is never treated as a verdict about the agent: the remembered
+      verdict is left exactly as it was, and the failure is recorded as a gap in
+      checking. Halflife's own downtime cannot revoke anybody's certificate.
+    </p>
+  </div>
+
+  <h2>What this deployment is doing right now</h2>
+  <p class="muted">
+    Read from this service on page load, not written here. If memory is
+    unreachable it says so, and if the registry is empty it says that too.
+    Everything below is also available as JSON at
+    <a href="/about">/about</a> and <a href="/agents">/agents</a>.
+  </p>
+  <div class="card" id="live"><p class="muted" style="margin:0">Asking this deployment...</p></div>
+
+  <h2>Using it</h2>
+<pre># register an agent at a risk level. This does not certify it.
+curl -s -X POST /agents -H 'content-type: application/json' \
+  -d '{"target":"https://your-agent.example/v1/ask","riskLevel":"HIGH"}'
+
+# where it stands right now, judged against the clock now
+curl -s /agents/https%3A%2F%2Fyour-agent.example%2Fv1%2Fask
+
+# its history, exactly as written
+curl -s /agents/https%3A%2F%2Fyour-agent.example%2Fv1%2Fask/journal
+
+# whose certificate has run out of time
+curl -s /due</pre>
+  <p class="muted">
+    Because a target is usually a URL, it is percent-encoded in the path.
+    <code>?target=</code> is accepted on the same routes for callers that would
+    rather not encode anything.
+  </p>
+
+  <h2>What halflife will not tell you</h2>
+  <div class="card">
+    <ul style="margin:0">
+      <li><strong>It runs no probes of its own.</strong> Every verdict it reports
+        came from StressProof. Halflife certifies nothing itself, it buys
+        certification and remembers the result.</li>
+      <li><strong>A certificate can only be as fresh as the last completed
+        check.</strong> When halflife cannot check, it reports the certificate as
+        stale rather than pretending it is current.</li>
+      <li><strong>An agent with no registered re-check request can never be
+        swept.</strong> It will go stale and stay stale until somebody asks for a
+        check by hand.</li>
+      <li><strong>It never compares results from two different versions of the
+        test.</strong> A verdict that fell because the test changed is not an
+        agent that got worse. Such a run is recorded as a fresh certification
+        under the new version, flagged as one, and it does not hand back a
+        certificate that was already revoked.</li>
+      <li><strong>If memory is unreachable, every answer is a 503 saying so.</strong>
+        Not a default, and not "no certificate on file". Halflife cannot honestly
+        say nothing has changed about an agent it is unable to remember.</li>
+      <li><strong>No payment has ever settled on Base, and halflife has never
+        been registered on the live Virtuals ACP network.</strong> Both are
+        written and tested against fakes. Neither is claimed as working, and no
+        transaction hash is claimed here because none exists.</li>
+    </ul>
+  </div>
+
+  <hr class="rule">
+  <footer>
+    <p><strong>Halflife</strong>. A certification that expires, for AI agents.
+    Built on Sibyl Memory. Certification runs are bought from StressProof at
+    0.25 USDC on Base per run.</p>
+    <p>Source: <a href="https://github.com/Sireadell/halflife">github.com/Sireadell/halflife</a>.
+    Apache-2.0.</p>
+  </footer>
+</div>
+
+<script>
+// Read the deployment rather than describe it. A page that stated its own
+// service's configuration from a hard-coded string would be making exactly the
+// never-rechecked claim this product exists to distrust.
+const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+const tone = { valid: 't-good', revoked: 't-bad', never_qualified: 't-warn', stale: 't-warn' };
+
+async function load() {
+  const box = document.getElementById('live');
+  let about, agents;
+
+  try {
+    const res = await fetch('/about');
+    about = await res.json();
+  } catch (err) {
+    box.innerHTML = '<p class="t-bad" style="margin:0">Could not reach this deployment\'s /about route.</p>';
+    return;
+  }
+
+  // Reported as three states, not a boolean. "off", "misconfigured" and "live"
+  // need different actions from whoever is reading.
+  const rows = [
+    ['Memory', about.memory && about.memory.reachable
+      ? '<span class="t-good">reachable</span>, probed just now'
+      : '<span class="t-bad">unreachable</span>. ' + esc((about.memory && about.memory.detail) || 'no detail')],
+    ['Certification runs', esc(about.certification && about.certification.mode) +
+      ((about.certification && about.certification.reason) ? '. ' + esc(about.certification.reason) : '')],
+    ['Payment on Base', about.payment && about.payment.configured
+      ? 'configured at ' + esc(about.payment.price.amount) + ' ' + esc(about.payment.price.currency) +
+        ' on ' + esc(about.payment.price.network) + '. Payments settled so far: ' + esc(about.payment.settledPaymentsClaimed)
+      : 'not configured. ' + esc(about.payment && about.payment.reason)],
+    ['Virtuals ACP', about.acp && about.acp.connected
+      ? 'connected'
+      : 'off. ' + esc(about.acp && about.acp.reason)],
+  ];
+
+  let html = '<div class="scroll"><table><tbody>' +
+    rows.map((r) => '<tr><th style="width:34%">' + r[0] + '</th><td>' + r[1] + '</td></tr>').join('') +
+    '</tbody></table></div>';
+
+  try {
+    const res = await fetch('/agents');
+    agents = await res.json();
+  } catch (err) {
+    agents = null;
+  }
+
+  if (!agents || !Array.isArray(agents.agents)) {
+    html += '<p class="muted" style="margin:16px 0 0">The registry could not be read. That is not the same as an empty registry, and this page will not report it as one.</p>';
+  } else if (agents.agents.length === 0) {
+    html += '<p class="muted" style="margin:16px 0 0">The registry on this deployment is empty. No agent has been registered here yet. Said plainly rather than filled with a sample.</p>';
+  } else {
+    html += '<h3 style="margin:22px 0 8px">The registry on this deployment, judged against the clock now</h3>' +
+      '<div class="scroll"><table><thead><tr><th>Agent</th><th>Risk</th><th>Standing</th><th>Last measured</th></tr></thead><tbody>' +
+      agents.agents.map((a) =>
+        '<tr><td class="tag">' + esc(a.target) + '</td>' +
+        '<td class="tag">' + esc(a.riskLevel) + (a.registered ? '' : ' <span class="muted">(default, nobody chose it)</span>') + '</td>' +
+        '<td class="tag ' + (tone[a.standing] || 'muted') + '">' + esc(a.standing) + '</td>' +
+        '<td class="muted">' + esc((a.certificate && a.certificate.certifiedAt) || 'never') + '</td></tr>').join('') +
+      '</tbody></table></div>';
+  }
+
+  box.innerHTML = html;
+}
+
+load();
+</script>
+</body>
+</html>

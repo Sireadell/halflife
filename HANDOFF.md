@@ -13,7 +13,7 @@ Two repos, both public, both on branch `master`, both pushed:
 - `C:\Users\DELL\halflife` (this one) https://github.com/Sireadell/halflife
 - `C:\Users\DELL\stressproof` https://github.com/Sireadell/stressproof
 
-Tests: Halflife 78 passing, StressProof 264 passing. Run `npm test` in each.
+Tests: Halflife 110 passing, StressProof 264 passing. Run `npm test` in each.
 
 ## Built and committed
 
@@ -68,8 +68,19 @@ the signer key makes reports unsigned, not falsely signed.
 
 1. Real Base payment. Only after the owner inspects wallet, amount, recipient,
    network and expected fee by hand. Nothing signed before that.
-2. Virtuals ACP integration (`@virtuals-protocol/acp-node`). Not started.
-3. Public web page. Not started.
+2. Virtuals ACP. The job handler is built and tested against fake jobs and is
+   reachable at `POST /acp/jobs`. The live registration is not done, and
+   `@virtuals-protocol/acp-node` is not in `package.json`, so the adapter
+   reports itself off at boot. Registering is still outstanding.
+3. Public web page. Built, `public/index.html`, served at `/` by the existing
+   static middleware.
+
+Also since built: the HTTP surface (`src/expressApp.js`), the registry
+(`src/lib/registry.js`), the sweeper (`src/lib/sweep.js`), and `render.yaml`
+for halflife. The Render file has never been run on Render, and its two open
+questions are written into its own header: whether python3 exists in Render's
+Node image, and that a persistent disk is required or the entire registry is
+destroyed on every restart.
 
 ## Known weak points, stated not hidden
 

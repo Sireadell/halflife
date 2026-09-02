@@ -63,12 +63,14 @@ never seen this agent" apart from "I cannot remember anything right now".
 
 ## Partner integrations
 
-Halflife pays StressProof in USDC on Base for every re-certification, and
-registers on Virtuals' Agent Commerce Protocol so other agents can hire it.
-Both are required parts of the build, not optional extras, and both must be
-seen working rather than merely claimed. See
+Halflife is built to pay StressProof in USDC on Base for every
+re-certification, and to register on Virtuals' Agent Commerce Protocol so other
+agents can hire it. Both are required parts of the build, not optional extras,
+and both must be seen working rather than merely claimed. Neither has been seen
+working yet: no payment has settled and no live ACP registration exists. See
 [`docs/PARTNERS.md`](docs/PARTNERS.md) for what each one has to demonstrate
-before it counts as done.
+before it counts as done, and the status section below for exactly how far each
+one got.
 
 The payment is not decoration. Halflife certifies nothing itself, it buys
 certification from another service, so one agent paying another is the honest
@@ -161,7 +163,7 @@ brand new process recalls what an earlier process wrote. That test is in
 [`test/memory.test.js`](test/memory.test.js) and it is the one test this
 project cannot survive failing.
 
-**78 tests passing.** Counted, not estimated. Run `npm test`.
+**110 tests passing.** Counted, not estimated. Run `npm test`.
 
 The certifier is built and tested. It is in
 [`src/lib/certifier.js`](src/lib/certifier.js) and it is the one operation
@@ -182,10 +184,6 @@ what the tests run against. The paying client is built and tested beside it and
 is described above. It has never sent a real payment, and the README says so
 there rather than leaving a reader to assume otherwise.
 
-Not built yet: the HTTP surface, the public page, the Virtuals integration, and
-a settled payment on Base. Nothing in this README describes something that does
-not exist, and it stays that way as the build goes.
-
 The revocation rule is built and tested. It is in
 [`src/lib/drift.js`](src/lib/drift.js) and it is pure, so a revocation can be
 argued with rather than taken on faith. Revocation follows the verdict, not the
@@ -196,6 +194,112 @@ Risk levels are built and tested too, in [`src/lib/risk.js`](src/lib/risk.js).
 They add the expiry clock and the minimum band an agent has to hold, layered on
 top of the drift comparison rather than replacing it. What they do not add is a
 different test per role, and no such test packs are planned. See below.
+
+### Built, and tested
+
+- **The HTTP surface** ([`src/expressApp.js`](src/expressApp.js)). Every route
+  listed below, with three rules it holds to: an unreachable memory is a 503
+  that says so rather than an empty answer, none of the five standings is ever
+  collapsed into a boolean, and no route hands back the `standing` word that was
+  written at check time.
+- **The registry** ([`src/lib/registry.js`](src/lib/registry.js)). The read
+  side. Staleness is recomputed from the stored evidence and the current time on
+  every request.
+- **The sweeper** ([`src/lib/sweep.js`](src/lib/sweep.js)). Re-checks whatever
+  is past its risk level's period. Off unless a deployment sets an interval,
+  because a background job that spends money should not start just because
+  something was deployed.
+- **ACP job handling** ([`src/lib/acp.js`](src/lib/acp.js)). Answers a standing
+  question in the shape ACP asks it, and is reachable over plain HTTP at
+  `POST /acp/jobs` with no wallet and no registration.
+- **The public page** ([`public/index.html`](public/index.html)), served at `/`
+  by the same app. The example certificate on it is hand-written and labelled as
+  an example. The rest of its numbers are fetched from the running deployment.
+- **A Render deployment file** ([`render.yaml`](render.yaml)), which has never
+  been run on Render. It says so in its own header comment, along with what each
+  missing variable does to the running service.
+
+### Partly built: the Virtuals integration
+
+**The job handler is built and tested. The live registration is not, and no
+real job has ever arrived.**
+
+What works and is covered by tests: everything the handler decides. Given a job,
+it produces the deliverable a buyer would receive, including which of the five
+standings applies, what that means for the buyer, and where to check the same
+answer for themselves. Those tests run against fake jobs.
+
+What has never happened: halflife has no registered agent profile on the ACP
+network. `createAcpService()` in [`src/lib/acp.js`](src/lib/acp.js) has never
+been run against the real service, no test exercises it, and
+`@virtuals-protocol/acp-node` is not currently in `package.json`, so on a
+deployment today it reports itself off rather than connecting. It is written to
+refuse loudly by name if the SDK does not expose what it was written against,
+because a loud refusal at boot is recoverable and a job silently accepted and
+never delivered is a buyer paying for nothing.
+
+`GET /about` says the same thing in its `acp` block, so this claim can be
+checked from outside rather than only read here.
+
+### Not built: a settled payment on Base
+
+No real payment has settled. Not one. See the payment section above for what the
+code does, what the tests cover, and what remains before a real payment can go
+out.
+
+Nothing in this README describes something that does not exist, and it stays
+that way as the build goes.
+
+## The HTTP surface
+
+`npm start` boots it. Everything answers JSON except `/`, which is the page.
+
+| Route | What it does |
+|---|---|
+| `GET /` | the public page |
+| `GET /about` | what this deployment is and is not configured to do, probed rather than assumed |
+| `GET /health` | is the process up |
+| `POST /agents` | register an agent at a risk level. Does not certify it |
+| `GET /agents` | the registry, every standing judged against the clock now |
+| `GET /agents/:target` | one agent's standing, judged against the clock now |
+| `GET /agents/:target/journal` | that agent's history, as written |
+| `POST /agents/:target/certify` | run a check now |
+| `GET /due` | whose certificate has run out of time |
+| `POST /sweep` | re-check everything that has |
+| `POST /acp/jobs` | answer a standing question in the shape ACP asks it |
+
+`:target` is how halflife knows an agent, and it is usually a URL, so it is
+percent-encoded in the path. `?target=` is accepted on the same routes for
+callers that would rather not encode anything.
+
+## Every environment variable this service reads
+
+Taken from the source, not from memory. Nothing secret has a default anywhere in
+this list, and a missing variable is always a named refusal rather than a
+fallback.
+
+| Variable | Read by | Missing means |
+|---|---|---|
+| `PORT` | `src/index.js` | listens on 3000 |
+| `HALFLIFE_MEMORY_DB` | `src/lib/memory.js` | `./halflife-memory.db`. On a host with an ephemeral filesystem this loses every certificate on restart |
+| `HALFLIFE_PYTHON` | `src/lib/memory.js` | `python`. If that is not on PATH the memory bridge cannot start and every route that needs memory answers 503 |
+| `HALFLIFE_STRESSPROOF_URL` | `src/lib/certifier.js`, `src/lib/x402Payment.js` | the free client falls back to `http://localhost:3000`. Required with no default on the paid route |
+| `HALFLIFE_PAID_RUNS` | `src/index.js` | free runs. `on`, `true` or `1` switches paid runs on by name. Deliberately opt-in: halflife will not start spending because the other variables happen to be present |
+| `HALFLIFE_PAYER_ADDRESS` | `src/lib/x402Payment.js` | with paid runs on, the deployment comes up misconfigured and certify and sweep answer 503 |
+| `HALFLIFE_PAYER_PRIVATE_KEY` | `src/lib/x402Payment.js` | same. Secret. Never logged, never journalled, never returned in any result |
+| `HALFLIFE_PAYMENT_NETWORK` | `src/lib/x402Payment.js` | same. Must be `base` or `base-sepolia` |
+| `HALFLIFE_X402_FACILITATOR` | `src/lib/x402Payment.js` | same. Recorded on the journal line so an auditor knows which facilitator settled a given payment |
+| `HALFLIFE_MAX_PAYMENT_USDC` | `src/lib/x402Payment.js` | `0.25`. The ceiling on a single payment, separate from the price. It has a default because it is not a secret and a missing ceiling is more dangerous than a conservative one |
+| `HALFLIFE_ACP_AGENT_WALLET_ADDRESS` | `src/lib/acp.js` | halflife is not hirable over the live ACP network and reports why at `/about`. The rest of the service runs unchanged and `POST /acp/jobs` still answers |
+| `HALFLIFE_ACP_PRIVATE_KEY` | `src/lib/acp.js` | same. Secret |
+| `HALFLIFE_ACP_ENTITY_ID` | `src/lib/acp.js` | same. Must be a whole positive number |
+| `HALFLIFE_SWEEP_INTERVAL_MS` | `src/index.js` | no background sweep. Certificates still expire on read, but nothing re-checks them until `POST /sweep` is called |
+
+The three states a deployment can be in for certification are `free`, `paid` and
+`misconfigured`, and `/about` reports which. The state that must never happen is
+a deployment that meant to buy its certifications, cannot, and quietly falls back
+to StressProof's free demo route. A rate-limited demo answering in place of a
+paid run looks exactly like success in every log line, so it is refused instead.
 
 ## Risk levels
 
@@ -260,7 +364,19 @@ Requires Node 22+ and Python 3.10+.
 
 ```bash
 npm install && pip install sibyl-memory-client && npm test
+npm start   # serves the page and the routes on :3000
 ```
+
+`npm start` comes up even when memory is unreachable. That is deliberate: a
+service that exits cannot tell anybody why it is down, and the memory bridge is
+a separate Python process that can come back without restarting this one. The
+boot log says which of free, paid or misconfigured the certification route is,
+whether memory answered a probe, whether the sweep is on, and whether ACP is
+connected. `GET /about` says the same from outside.
+
+Deploying it needs one more thing than running it locally does: somewhere for
+the SQLite memory file to live that survives a restart.
+[`render.yaml`](render.yaml) explains why, and what is lost without it.
 
 ## Prior work
 

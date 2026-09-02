@@ -248,9 +248,44 @@ export class Memory {
     return this.call('read_events', [], { limit });
   }
 
-  /** READ. Every agent halflife has ever certified. */
+  /**
+   * READ. Every agent halflife has ever certified, whether or not anyone knows
+   * its name.
+   *
+   * Separate from searchRegistry because Sibyl's search needs something to
+   * search for: an empty query matches nothing, so a registry page built on
+   * search would report an empty registry on a database full of agents. This
+   * lists the tier instead, which is the question the registry is actually
+   * asking.
+   */
+  async listRegistry() {
+    return this.call('list_entities', [AGENT_CATEGORY]);
+  }
+
+  /**
+   * READ. Every registered risk level, in one call.
+   *
+   * The registry needs the level for every agent it lists, and asking for them
+   * one at a time would be one memory round trip per agent. Levels live in
+   * their own tier, so they can be fetched in a single call and joined by name.
+   */
+  async listRiskLevels() {
+    return this.call('list_entities', [RISK_CATEGORY]);
+  }
+
+  /**
+   * READ. Find an agent halflife has certified, by name.
+   *
+   * Filtered to the agent tier on the way out. Sibyl searches every tier, so an
+   * unfiltered result returns the same agent twice, once as a certification
+   * record and once as a risk level, and a caller reading `body.verdict` off
+   * the risk level record would find nothing there and conclude the agent has
+   * never been certified.
+   */
   async searchRegistry(query = '') {
-    return this.call('search_entities', [query]);
+    const found = await this.call('search_entities', [query]);
+    if (!Array.isArray(found)) return found;
+    return found.filter((entity) => entity?.category === AGENT_CATEGORY);
   }
 }
 

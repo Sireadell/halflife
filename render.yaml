@@ -1,0 +1,188 @@
+# Render deployment.
+#
+# Every secret is marked sync:false, which means Render prompts for it rather
+# than reading it from this file. None of them belong in a public repo, and
+# what each one does when it is missing is not the same in every case:
+#
+#   HALFLIFE_PAID_RUNS        not "on" -> every certification goes to
+#                             StressProof's free demo route. Nothing is bought
+#                             and no wallet is touched. This is the state the
+#                             service starts in unless somebody switches it on
+#                             by name.
+#
+#   HALFLIFE_STRESSPROOF_URL  missing -> the free client falls back to
+#                             http://localhost:3000, which on Render is this
+#                             process talking to itself and getting a 404. Set
+#                             it even for free runs.
+#
+#   HALFLIFE_PAYER_ADDRESS    any one of these five missing, with paid runs
+#   HALFLIFE_PAYER_PRIVATE_.. switched on -> the deployment comes up
+#   HALFLIFE_PAYMENT_NETWORK  MISCONFIGURED. POST /agents/:target/certify and
+#   HALFLIFE_X402_FACILITATOR POST /sweep answer 503 naming the missing
+#   (+ the URL above)         variable, the automatic sweep does not start, and
+#                             nothing falls back to the free route. A free
+#                             verdict standing in for a paid one is invisible
+#                             in every log line, so it is refused instead.
+#                             Nothing is certified and nothing is revoked.
+#
+#   HALFLIFE_ACP_*            missing -> halflife is not hirable over the live
+#                             Virtuals ACP network and says so at /about. The
+#                             rest of the service runs unchanged, and
+#                             POST /acp/jobs still answers, because that
+#                             handler needs no wallet.
+#
+#   HALFLIFE_SWEEP_INTERVAL.. missing -> no background sweep. Certificates
+#                             still expire on read, because staleness is
+#                             recomputed against the clock on every request.
+#                             Nothing re-checks them until POST /sweep is
+#                             called by hand.
+#
+#   HALFLIFE_MEMORY_DB        missing -> ./halflife-memory.db, which is inside
+#                             the deploy directory and therefore thrown away.
+#                             See the disk section below. This one is set here
+#                             rather than left to Render because getting it
+#                             wrong loses every certificate silently.
+#
+#   HALFLIFE_PYTHON           missing -> "python", which is not on PATH in
+#                             Render's Node image. Memory would be unreachable
+#                             on every request. See the runtime note below.
+#
+# Everything above degrades loudly: GET /about reports the certification mode,
+# whether payment is configured, whether ACP is connected, and whether memory
+# actually answered a probe just now. A half-deployed service is visible from
+# outside rather than only in the logs.
+#
+# --- why the Node runtime and not the Python one -----------------------------
+#
+# Halflife is a Node service that spawns one long-lived Python child process
+# (memory/bridge.py) for the Sibyl memory layer. Both languages have to be
+# present at runtime, and Render's native runtimes each install one.
+#
+# Node is the runtime because Node is what serves HTTP, what `npm start` boots,
+# and what the whole dependency tree is written in. Python is the smaller of
+# the two dependencies: one interpreter and one pip package. Building it the
+# other way around, on the Python runtime, would mean installing Node by hand
+# in the build command, which is the larger and more fragile half.
+#
+# So the build command does both: npm ci for Node, then a virtual environment
+# for sibyl-memory-client. The venv is not decoration. Recent Debian and Ubuntu
+# images mark the system Python as externally managed (PEP 668) and refuse a
+# plain `pip install`, so installing into a venv is what makes the install work
+# at all rather than a matter of taste. HALFLIFE_PYTHON then points the bridge
+# at that venv's interpreter, because "python" on PATH is either absent or the
+# wrong one.
+#
+# NOT YET VERIFIED ON A REAL DEPLOY. This has never been run on Render, and the
+# assumption it rests on is that python3 exists in Render's Node image. If the
+# build fails on `python3: not found`, the fix is to switch to
+# `runtime: docker` with a Dockerfile that starts from a Node base image and
+# apt-installs python3 and python3-venv. That is a known-good route and a
+# larger change, so it is written down here rather than adopted pre-emptively.
+# The failure is loud either way: a build that cannot find Python fails the
+# deploy, and a runtime that cannot start the bridge reports memory as
+# UNREACHABLE at boot and answers 503 on every route that needs it.
+#
+# --- why there is a disk, and what happens without one -----------------------
+#
+# Sibyl memory is a local SQLite file. Render's filesystem is ephemeral: it is
+# rebuilt on every deploy, and it is also lost on an ordinary restart, which on
+# the free plan happens every time the service sleeps after fifteen idle
+# minutes.
+#
+# Said plainly: with no persistent disk, every certificate, every risk-level
+# registration and the entire journal are destroyed roughly every fifteen
+# minutes. Halflife would then answer `not_certified` for every agent it had
+# certified an hour earlier. That is not a degraded halflife. Halflife stores
+# nothing else and computes nothing else, so a halflife that forgets is an
+# empty wrapper around somebody else's API.
+#
+# So there is a disk, and the plan is `starter` rather than `free` because
+# Render does not offer disks on the free plan. That is a real monthly cost and
+# it is the honest price of the product working at all. A service with a disk
+# also cannot run more than one instance, which is correct here anyway: one
+# SQLite file wants one writer.
+#
+# The only case where `plan: free` with no disk is defensible is a throwaway
+# demo where losing the registry mid-demo is acceptable. It is not the shipping
+# configuration, and this file does not pretend otherwise.
+
+services:
+  - type: web
+    name: halflife
+    runtime: node
+    plan: starter
+    region: oregon
+    branch: master
+    # Two installs, one for each language the service needs at runtime. The
+    # venv path is repeated in HALFLIFE_PYTHON below and the two must agree.
+    buildCommand: npm ci && python3 -m venv .venv && .venv/bin/pip install --upgrade pip && .venv/bin/pip install sibyl-memory-client
+    startCommand: npm start
+    healthCheckPath: /health
+    disk:
+      name: halflife-memory
+      mountPath: /var/data
+      # SQLite plus its write-ahead log. The registry is small: a few kilobytes
+      # per agent. This is sized for headroom, not for volume.
+      sizeGB: 1
+    envVars:
+      - key: NODE_VERSION
+        value: 22.23.2
+
+      # --- memory ------------------------------------------------------------
+      # On the disk, not in the deploy directory. Everything halflife knows
+      # lives in this one file.
+      - key: HALFLIFE_MEMORY_DB
+        value: /var/data/halflife-memory.db
+      # The interpreter created by buildCommand. Render's Node runtime builds
+      # and runs in /opt/render/project/src.
+      - key: HALFLIFE_PYTHON
+        value: /opt/render/project/src/.venv/bin/python
+
+      # --- what halflife buys ------------------------------------------------
+      # The StressProof deployment that actually runs the probes. Needed on the
+      # free route as well as the paid one.
+      - key: HALFLIFE_STRESSPROOF_URL
+        sync: false
+      # "on", "true" or "1" switches paid runs on. Anything else, including
+      # unset, means free runs. Deliberately opt-in by name: halflife will not
+      # start spending because five variables happen to be present.
+      - key: HALFLIFE_PAID_RUNS
+        sync: false
+
+      # --- payment, all five required together -------------------------------
+      # The wallet that pays, and the wallet the target's consent file names.
+      - key: HALFLIFE_PAYER_ADDRESS
+        sync: false
+      # Its key. Owner enters this personally. Never logged and never journalled.
+      - key: HALFLIFE_PAYER_PRIVATE_KEY
+        sync: false
+      # "base" or "base-sepolia". Nothing else is accepted.
+      - key: HALFLIFE_PAYMENT_NETWORK
+        sync: false
+      # The facilitator that settles. Recorded on the journal line so an
+      # auditor knows which one settled a given payment.
+      - key: HALFLIFE_X402_FACILITATOR
+        sync: false
+      # Ceiling on a single payment, in whole USDC. Not a secret, and it has a
+      # default of 0.25 in code, so it is set here in the clear: a visible
+      # ceiling is easier to audit than an implied one.
+      - key: HALFLIFE_MAX_PAYMENT_USDC
+        value: "0.25"
+
+      # --- Virtuals ACP ------------------------------------------------------
+      # All three required together. With any of them missing, halflife is not
+      # hirable over the live network and reports why at /about.
+      - key: HALFLIFE_ACP_AGENT_WALLET_ADDRESS
+        sync: false
+      - key: HALFLIFE_ACP_PRIVATE_KEY
+        sync: false
+      - key: HALFLIFE_ACP_ENTITY_ID
+        sync: false
+
+      # --- the sweep ---------------------------------------------------------
+      # How often to re-check everything past its period, in milliseconds. Left
+      # unset here on purpose: a background job that spends money on every pass
+      # should be switched on deliberately, per deployment, not inherited from
+      # a file in the repo. 3600000 is one hour.
+      - key: HALFLIFE_SWEEP_INTERVAL_MS
+        sync: false

@@ -267,7 +267,7 @@ export class Certifier {
    * keeps the level it was judged under, so nobody reading the history later
    * finds an agent that appears to have been held to today's bar last month.
    */
-  async registerRiskLevel(target, level) {
+  async registerRiskLevel(target, level, { check = undefined } = {}) {
     if (typeof target !== 'string' || target.length === 0) {
       throw new TypeError('registerRiskLevel requires the agent to register');
     }
@@ -278,13 +278,26 @@ export class Certifier {
     const policy = riskPolicy(level);
     const existing = await this.#memory.recallRiskLevel(target);
 
-    if (existing?.riskLevel === policy.level) {
+    // What an unattended re-check has to send this agent, kept alongside the
+    // level because both answer the same question: what is this agent and how
+    // is it to be checked. Undefined means the caller said nothing, so whatever
+    // was registered before is kept; a caller replacing it passes a new one.
+    //
+    // Deliberately never carries auth headers. A credential belonging to
+    // somebody else's agent is not halflife's to hold, and an agent that can
+    // only be reached with one simply cannot be swept unattended. Saying that
+    // out loud is better than storing a secret to avoid saying it.
+    const checkRequest = check === undefined ? (existing?.checkRequest ?? null) : sanitiseCheck(check);
+    const checkChanged = JSON.stringify(checkRequest ?? null) !== JSON.stringify(existing?.checkRequest ?? null);
+
+    if (existing?.riskLevel === policy.level && !checkChanged) {
       return {
         target,
         riskLevel: policy.level,
         previousRiskLevel: policy.level,
         changed: false,
         setAt: existing.setAt ?? null,
+        checkRequest,
         journalLine: null,
       };
     }
@@ -295,7 +308,23 @@ export class Certifier {
       riskLevel: policy.level,
       setAt,
       previousRiskLevel: existing?.riskLevel ?? null,
+      checkRequest,
     });
+
+    // A registration that only added or replaced the re-check request is not a
+    // change of level, and journalling it as one would put a level change in the
+    // history that never happened.
+    if (existing?.riskLevel === policy.level) {
+      return {
+        target,
+        riskLevel: policy.level,
+        previousRiskLevel: policy.level,
+        changed: false,
+        setAt,
+        checkRequest,
+        journalLine: null,
+      };
+    }
 
     const line = existing?.riskLevel
       ? `${target}: risk level changed from ${existing.riskLevel} to ${policy.level}. From now on it must be re-checked ${policy.period} and must hold ${policy.minimumVerdict}. Checks recorded before now were judged at ${existing.riskLevel} and are left as they were written.`
@@ -314,6 +343,7 @@ export class Certifier {
       previousRiskLevel: existing?.riskLevel ?? null,
       changed: true,
       setAt,
+      checkRequest,
       journalLine: line,
     };
   }
@@ -322,6 +352,19 @@ export class Certifier {
   async riskLevelOf(target) {
     const record = await this.#memory.recallRiskLevel(target);
     return isKnownRiskLevel(record?.riskLevel) ? record.riskLevel : DEFAULT_RISK_LEVEL;
+  }
+
+  /**
+   * What an unattended re-check should send this agent, or null if nobody said.
+   *
+   * Null is a real answer and the sweep treats it as one: it skips the agent and
+   * records why, rather than inventing a request and reporting whatever the
+   * agent does with a body it was never told to expect.
+   */
+  async checkRequestFor(target) {
+    const record = await this.#memory.recallRiskLevel(target);
+    const stored = record?.checkRequest;
+    return stored && typeof stored === 'object' ? stored : null;
   }
 
   /**
@@ -591,6 +634,23 @@ function journalLine(target, comparison, current, assessment, versions) {
     default:
       return `${target}: re-checked, result ${comparison.drift}.`;
   }
+}
+
+/**
+ * Keep only the parts of a re-check request halflife is willing to store.
+ *
+ * An allow-list rather than a copy, so a caller cannot smuggle `authHeaders`
+ * into the record by sending them. Credentials belonging to somebody else's
+ * agent are not halflife's to keep, and a field that quietly persisted them
+ * would turn the memory database into a secret store nobody agreed to.
+ */
+function sanitiseCheck(check) {
+  if (!check || typeof check !== 'object') return null;
+  const method = typeof check.method === 'string' ? check.method.toUpperCase() : undefined;
+  const sampleBody =
+    check.sampleBody && typeof check.sampleBody === 'object' ? check.sampleBody : undefined;
+  if (method === undefined && sampleBody === undefined) return null;
+  return { ...(method ? { method } : {}), ...(sampleBody ? { sampleBody } : {}) };
 }
 
 function numberOrNull(value) {
