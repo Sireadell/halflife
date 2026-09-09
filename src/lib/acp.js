@@ -236,8 +236,11 @@ export async function createAcpService({
     };
   }
 
-  const AcpClient = sdk.default ?? sdk.AcpClient;
-  const buildContract = sdk.AcpContractClient?.build ?? sdk.AcpContractClient?.buildAcpClient;
+  // CJS/ESM interop double-wraps the default export under dynamic import,
+  // so the real class can land at sdk.default.default rather than sdk.default.
+  const AcpClient = sdk.default?.default ?? sdk.default ?? sdk.AcpClient;
+  const buildContract =
+    sdk.AcpContractClientV2?.build ?? sdk.AcpContractClient?.build ?? sdk.AcpContractClient?.buildAcpClient;
   if (typeof AcpClient !== 'function' || typeof buildContract !== 'function') {
     return {
       enabled: false,
