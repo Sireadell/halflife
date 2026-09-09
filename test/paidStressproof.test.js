@@ -101,6 +101,17 @@ function response({ status = 200, body = {}, headers = {} } = {}) {
 
 const settlementHeader = (payload) => Buffer.from(JSON.stringify(payload), 'utf8').toString('base64');
 
+const challengeHeader = (payload) => Buffer.from(JSON.stringify(payload), 'utf8').toString('base64');
+
+// Matches what a real deployment actually sends: the challenge lives in a
+// `payment-required` header, base64-encoded, and the JSON body is an empty
+// `{}`. Found in production, on the very first real payment attempt: the
+// body read cleanly every time, it was just always empty, and every fixture
+// in this file was putting the challenge in the body instead. The fixtures
+// were testing a shape StressProof never actually sends.
+const response402 = (overrides) =>
+  response({ status: 402, body: {}, headers: { 'payment-required': challengeHeader(challengeBody(overrides)) } });
+
 /**
  * A StressProof that answers the four calls in order. Each entry is either a
  * response or an Error to throw, so a network failure is expressed the same way
@@ -123,7 +134,7 @@ function fakeUpstream(...replies) {
 const happyPath = (headers = {}) =>
   fakeUpstream(
     response({ status: 201, body: { ok: true, runId: 'run-42', consentMode: 'standing' } }),
-    response({ status: 402, body: challengeBody() }),
+    response402(),
     response({ status: 200, body: REPORT, headers }),
   );
 
@@ -345,7 +356,7 @@ test('a bill halflife did not agree to is journalled and never signed', async ()
   const journal = await expectFailure(
     [
       response({ status: 201, body: { runId: 'run-42' } }),
-      response({ status: 402, body: challengeBody({ amount: '99000000' }) }),
+      response402({ amount: '99000000' }),
     ],
     {
       payer: {
@@ -364,7 +375,7 @@ test('a bill halflife did not agree to is journalled and never signed', async ()
 test('a payment the upstream rejects produces no report and warns that money may have moved', async () => {
   const journal = await expectFailure([
     response({ status: 201, body: { runId: 'run-42' } }),
-    response({ status: 402, body: challengeBody() }),
+    response402(),
     response({ status: 403, body: { error: 'the wallet that paid is not the wallet that proved control' } }),
   ]);
   assert.equal(journal.lines[0].extra.mayHaveSpent, true);
@@ -373,7 +384,7 @@ test('a payment the upstream rejects produces no report and warns that money may
 
 test('a signing failure is recorded and no request is sent with a broken header', async () => {
   const journal = await expectFailure(
-    [response({ status: 201, body: { runId: 'run-42' } }), response({ status: 402, body: challengeBody() })],
+    [response({ status: 201, body: { runId: 'run-42' } }), response402()],
     {
       payer: {
         address: PAYER,

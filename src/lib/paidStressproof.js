@@ -176,6 +176,27 @@ export function createPaidStressProofClient({
     }
   };
 
+  // The installed @x402/express version puts the real 402 challenge in a
+  // `payment-required` response header, base64-encoded, and leaves the JSON
+  // body an empty `{}`. Found the hard way: the body read cleanly every time,
+  // it was just always empty, so every paid run failed with "no payment
+  // options at all" while StressProof's own logs showed nothing wrong at all,
+  // because nothing WAS wrong on that side. The header is checked first since
+  // it is what a real deployment actually sends; the body is kept as a
+  // fallback rather than removed, in case a future version of the library (or
+  // a differently-configured facilitator path) goes back to sending it there.
+  const readChallenge = async (response) => {
+    const headerValue = response.headers?.get?.('payment-required');
+    if (headerValue) {
+      try {
+        return JSON.parse(Buffer.from(headerValue, 'base64').toString('utf8'));
+      } catch {
+        // fall through to the body
+      }
+    }
+    return readJson(response);
+  };
+
   return {
     payerAddress: config.payerAddress,
     network: config.network,
@@ -237,9 +258,9 @@ export function createPaidStressProofClient({
         );
       }
 
-      const challenge = await readJson(challenged);
+      const challenge = await readChallenge(challenged);
       if (!challenge) {
-        return failed(target, 'reading the payment challenge', 'the 402 carried no readable body', { runId });
+        return failed(target, 'reading the payment challenge', 'the 402 carried no readable challenge, in its body or in its payment-required header', { runId });
       }
 
       // 3. Decide whether this is a bill halflife agreed to pay, BEFORE
