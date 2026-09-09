@@ -389,5 +389,3 @@ every report when it restarts.
 ## Licence
 
 Apache-2.0. See [LICENSE](LICENSE).
-
-<!-- auto-deploy connectivity test, safe to remove -->
