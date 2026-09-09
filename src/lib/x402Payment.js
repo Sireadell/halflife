@@ -42,7 +42,7 @@ const NETWORKS = Object.freeze({
 });
 
 /** What one re-certification costs, in whole USDC. StressProof's published price. */
-export const RECERTIFICATION_PRICE_USDC = '0.25';
+export const RECERTIFICATION_PRICE_USDC = '0.10';
 
 /** USDC has six decimal places on both Base networks. */
 const USDC_DECIMALS = 6;

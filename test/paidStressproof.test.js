@@ -66,7 +66,7 @@ const fakePayer = () => ({
   },
 });
 
-function challengeBody({ amount = '250000', network = 'eip155:8453', asset = USDC_BASE, extra } = {}) {
+function challengeBody({ amount = '100000', network = 'eip155:8453', asset = USDC_BASE, extra } = {}) {
   return {
     x402Version: 2,
     accepts: [
@@ -145,8 +145,8 @@ test('a complete environment resolves, and the ceiling defaults to the price', (
   assert.equal(config.ok, true, config.reason);
   assert.equal(config.network, 'eip155:8453');
   assert.equal(config.payerAddress, PAYER.toLowerCase());
-  assert.equal(config.priceUsdc, '0.25');
-  assert.equal(config.maxAtomic, 250000n);
+  assert.equal(config.priceUsdc, '0.10');
+  assert.equal(config.maxAtomic, 100000n);
 });
 
 test('an unknown network is refused rather than guessed at', () => {
@@ -252,12 +252,12 @@ test('the transaction hash is written to the journal so it can be checked on cha
 
   assert.equal(journal.lines.length, 1);
   const [{ line, extra }] = journal.lines;
-  assert.match(line, /paid 0\.25 USDC/);
+  assert.match(line, /paid 0\.1 USDC/);
   assert.match(line, /0xabc123/);
   assert.equal(extra.event, 'payment-settled');
   assert.equal(extra.paid, true);
   assert.equal(extra.txHash, '0xabc123');
-  assert.equal(extra.amountUsdc, '0.25');
+  assert.equal(extra.amountUsdc, '0.1');
   assert.equal(extra.payTo, PAYEE);
   assert.equal(extra.network, 'eip155:8453');
   assert.equal(extra.reportId, 'report-1');

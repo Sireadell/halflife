@@ -31,7 +31,7 @@ is "a judge watching the video sees this happen", not "the code exists".
 
 ## Partner 1: Base
 
-**What halflife does:** pays StressProof for every re-certification. 0.25 USDC
+**What halflife does:** pays StressProof for every re-certification. 0.10 USDC
 on Base, per run, over x402.
 
 This is not a payment bolted on to earn a multiplier. It is the honest shape of
@@ -65,7 +65,8 @@ from the start.
 
 1. StressProof deployed to a public URL, with `STRESSPROOF_PAY_TO` set so its
    paid route is live rather than refusing as misconfigured.
-2. A funded wallet on Base, holding enough USDC for the 0.25 per run plus gas,
+2. A funded wallet on Base, holding enough USDC for the 0.10 per run (no gas
+   needed on the payer side, the payment is signature-only),
    with its key supplied to halflife through `HALFLIFE_PAYER_PRIVATE_KEY` and
    never written into either repository.
 3. A target agent whose owner has published a standing consent file at its own

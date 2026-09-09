@@ -163,9 +163,11 @@ services:
       # auditor knows which one settled a given payment.
       - key: HALFLIFE_X402_FACILITATOR
         sync: false
-      # Ceiling on a single payment, in whole USDC. Not a secret, and it has a
-      # default of 0.25 in code, so it is set here in the clear: a visible
-      # ceiling is easier to audit than an implied one.
+      # Ceiling on a single payment, in whole USDC. Not a secret, so it is set
+      # here in the clear rather than left to the code's default: a visible
+      # ceiling is easier to audit than an implied one. StressProof's actual
+      # price is 0.10; this stays a little above it so a small future price
+      # change on StressProof's side does not need a matching redeploy here.
       - key: HALFLIFE_MAX_PAYMENT_USDC
         value: "0.25"
 

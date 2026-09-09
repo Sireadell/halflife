@@ -135,7 +135,7 @@ of a paid run would look exactly like success.
 | `HALFLIFE_X402_FACILITATOR` | The facilitator that settles the payment. Recorded on the journal line so an auditor knows which one settled it. Halflife does not call it directly; StressProof does, as the party being paid |
 
 One optional setting, `HALFLIFE_MAX_PAYMENT_USDC`, is the ceiling on a single
-payment. It defaults to `0.25`, which is StressProof's published price. It has
+payment. It defaults to `0.10`, which is StressProof's published price. It has
 a default because it is not a secret and because a missing ceiling is more
 dangerous than a conservative one.
 
@@ -289,7 +289,7 @@ fallback.
 | `HALFLIFE_PAYER_PRIVATE_KEY` | `src/lib/x402Payment.js` | same. Secret. Never logged, never journalled, never returned in any result |
 | `HALFLIFE_PAYMENT_NETWORK` | `src/lib/x402Payment.js` | same. Must be `base` or `base-sepolia` |
 | `HALFLIFE_X402_FACILITATOR` | `src/lib/x402Payment.js` | same. Recorded on the journal line so an auditor knows which facilitator settled a given payment |
-| `HALFLIFE_MAX_PAYMENT_USDC` | `src/lib/x402Payment.js` | `0.25`. The ceiling on a single payment, separate from the price. It has a default because it is not a secret and a missing ceiling is more dangerous than a conservative one |
+| `HALFLIFE_MAX_PAYMENT_USDC` | `src/lib/x402Payment.js` | `0.10`. The ceiling on a single payment, separate from the price. It has a default because it is not a secret and a missing ceiling is more dangerous than a conservative one |
 | `HALFLIFE_ACP_AGENT_WALLET_ADDRESS` | `src/lib/acp.js` | halflife is not hirable over the live ACP network and reports why at `/about`. The rest of the service runs unchanged and `POST /acp/jobs` still answers |
 | `HALFLIFE_ACP_PRIVATE_KEY` | `src/lib/acp.js` | same. Secret |
 | `HALFLIFE_ACP_ENTITY_ID` | `src/lib/acp.js` | same. Must be a whole positive number |
