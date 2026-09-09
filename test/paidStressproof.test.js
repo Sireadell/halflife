@@ -75,7 +75,7 @@ function challengeBody({ amount = '100000', network = 'eip155:8453', asset = USD
         network,
         asset,
         payTo: PAYEE,
-        maxAmountRequired: amount,
+        amount,
         extra: extra === undefined ? { name: 'USD Coin', version: '2' } : extra,
       },
     ],

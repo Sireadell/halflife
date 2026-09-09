@@ -319,7 +319,7 @@ export function createPaidStressProofClient({
 
       // The money line. Written before the report is handed back, so a caller
       // that crashes on the report still leaves a record of what was spent.
-      const amount = formatUsdc(chosen.requirement.maxAmountRequired);
+      const amount = formatUsdc(chosen.requirement.amount);
       await record(
         `${target}: paid ${amount} USDC on ${config.networkLabel} to ${chosen.requirement.payTo} for one StressProof ` +
           `re-certification (run ${runId}). ` +

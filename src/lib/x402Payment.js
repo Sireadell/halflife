@@ -186,9 +186,9 @@ function unacceptableBecause(option, config) {
 
   let atomic;
   try {
-    atomic = BigInt(String(option?.maxAmountRequired ?? ''));
+    atomic = BigInt(String(option?.amount ?? ''));
   } catch {
-    return `maxAmountRequired '${option?.maxAmountRequired}' is not a whole number of atomic units`;
+    return `amount '${option?.amount}' is not a whole number of atomic units`;
   }
   if (atomic > config.maxAtomic) {
     return `it asks for ${formatUsdc(atomic)} USDC, above the ${config.maxUsdc} ceiling halflife is configured to pay`;
