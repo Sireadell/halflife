@@ -81,7 +81,7 @@ export function targetOfJob(job) {
   return typeof candidate === 'string' && candidate.trim().length > 0 ? candidate.trim() : null;
 }
 
-function tryParse(text) {
+export function tryParse(text) {
   try {
     return JSON.parse(text);
   } catch {
@@ -270,8 +270,9 @@ export async function createAcpService({
 
   agent.on('entry', async (session, entry) => {
     if (entry.kind === 'message' && entry.contentType === 'requirement' && session.status === 'open') {
-      const job = { serviceRequirement: JSON.parse(entry.content) };
       try {
+        const content = typeof entry.content === 'string' ? tryParse(entry.content) : entry.content;
+        const job = { serviceRequirement: content };
         const deliverable = await answerStandingJob({ registry, job, clock });
         pending.set(session.jobId, deliverable);
         await session.setBudget(AssetToken.usdc(0.1, session.chainId));
