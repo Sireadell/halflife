@@ -260,7 +260,7 @@ export async function createAcpService({
     chains: [base],
   });
 
-  const agent = await AcpAgent.create({ provider });
+  const agent = await AcpAgent.create({ evmProvider: provider });
 
   // Deliverables are computed when the requirement message arrives and held
   // until the job is funded, because setBudget and submit are two separate
