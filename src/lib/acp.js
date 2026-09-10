@@ -169,6 +169,11 @@ export async function answerStandingJob({ registry, job, clock = () => new Date(
  * Same rule as x402Payment.js: nothing secret has a default, and a missing
  * variable is a named refusal. A wallet key is a wallet key whether it is
  * paying StressProof or signing an ACP job, and neither belongs in a file.
+ *
+ * These four map onto acp-node-v2's PrivyAlchemyEvmProviderAdapter, not the
+ * older entity-id whitelisting scheme. The Virtuals console never surfaced a
+ * numeric entity id for an agent created through its newer Create Agent flow
+ * because that scheme belongs to the SDK this adapter no longer uses.
  */
 export function resolveAcpConfig(env = process.env) {
   const missing = [];
@@ -179,8 +184,8 @@ export function resolveAcpConfig(env = process.env) {
   };
 
   const agentWalletAddress = read('HALFLIFE_ACP_AGENT_WALLET_ADDRESS');
-  const whitelistedWalletPrivateKey = read('HALFLIFE_ACP_PRIVATE_KEY');
-  const entityId = read('HALFLIFE_ACP_ENTITY_ID');
+  const walletId = read('HALFLIFE_ACP_WALLET_ID');
+  const signerPrivateKey = read('HALFLIFE_ACP_PRIVATE_KEY');
 
   if (missing.length > 0) {
     return {
@@ -193,12 +198,7 @@ export function resolveAcpConfig(env = process.env) {
     };
   }
 
-  const entity = Number(entityId);
-  if (!Number.isInteger(entity) || entity <= 0) {
-    return { ok: false, missing: [], reason: `HALFLIFE_ACP_ENTITY_ID='${entityId}' is not a whole entity id` };
-  }
-
-  return { ok: true, agentWalletAddress, whitelistedWalletPrivateKey, entityId: entity };
+  return { ok: true, agentWalletAddress, walletId, signerPrivateKey };
 }
 
 /**
@@ -220,14 +220,15 @@ export async function createAcpService({
   env = process.env,
   clock = () => new Date().toISOString(),
   log = console,
-  loadSdk = () => import('@virtuals-protocol/acp-node'),
+  loadSdk = () => import('@virtuals-protocol/acp-node-v2'),
+  loadChain = () => import('@account-kit/infra').then((m) => m.base),
 } = {}) {
   const config = resolveAcpConfig(env);
   if (!config.ok) return { enabled: false, reason: config.reason, missing: config.missing };
 
-  let sdk;
+  let sdk, base;
   try {
-    sdk = await loadSdk();
+    [sdk, base] = await Promise.all([loadSdk(), loadChain()]);
   } catch (error) {
     return {
       enabled: false,
@@ -236,57 +237,59 @@ export async function createAcpService({
     };
   }
 
-  // CJS/ESM interop double-wraps the default export under dynamic import,
-  // so the real class can land at sdk.default.default rather than sdk.default.
-  const AcpClient = sdk.default?.default ?? sdk.default ?? sdk.AcpClient;
-  const buildContract =
-    sdk.AcpContractClientV2?.build ?? sdk.AcpContractClient?.build ?? sdk.AcpContractClient?.buildAcpClient;
-  if (typeof AcpClient !== 'function' || typeof buildContract !== 'function') {
+  const { AcpAgent, PrivyAlchemyEvmProviderAdapter, AssetToken } = sdk;
+  if (
+    typeof AcpAgent?.create !== 'function' ||
+    typeof PrivyAlchemyEvmProviderAdapter?.create !== 'function' ||
+    typeof AssetToken?.usdc !== 'function'
+  ) {
     return {
       enabled: false,
       reason:
-        'the installed @virtuals-protocol/acp-node does not expose AcpClient and AcpContractClient.build, ' +
-        'which is what this adapter was written against. Refusing to guess at a different API rather than ' +
-        'accepting jobs halflife might never deliver.',
+        'the installed @virtuals-protocol/acp-node-v2 does not expose AcpAgent.create, ' +
+        'PrivyAlchemyEvmProviderAdapter.create and AssetToken.usdc, which is what this adapter was written ' +
+        'against. Refusing to guess at a different API rather than accepting jobs halflife might never deliver.',
       missing: [],
     };
   }
 
-  const contract = await buildContract(
-    config.whitelistedWalletPrivateKey,
-    config.entityId,
-    config.agentWalletAddress,
-  );
-
-  const client = new AcpClient({
-    acpContractClient: contract,
-    onNewTask: async (job) => {
-      try {
-        const deliverable = await answerStandingJob({ registry, job, clock });
-        await deliver(job, deliverable);
-        log.log(`acp: answered job for ${deliverable.target}: ${deliverable.standing}`);
-      } catch (error) {
-        // Rejected rather than delivered empty. A job that cannot be answered
-        // honestly is one halflife should not be paid for.
-        log.error(`acp: refusing job: ${error.message}`);
-        await reject(job, error.message).catch(() => {});
-      }
-    },
+  const provider = await PrivyAlchemyEvmProviderAdapter.create({
+    walletAddress: config.agentWalletAddress,
+    walletId: config.walletId,
+    signerPrivateKey: config.signerPrivateKey,
+    chains: [base],
   });
 
-  await client.init?.();
-  return { enabled: true, client, agentWalletAddress: config.agentWalletAddress };
-}
+  const agent = await AcpAgent.create({ provider });
 
-async function deliver(job, deliverable) {
-  const payload = { type: 'application/json', value: JSON.stringify(deliverable) };
-  if (typeof job?.deliver === 'function') return job.deliver(payload);
-  if (typeof job?.deliverJob === 'function') return job.deliverJob(payload);
-  throw new AcpJobRefused('the ACP job object exposes no way to deliver a result');
-}
+  // Deliverables are computed when the requirement message arrives and held
+  // until the job is funded, because setBudget and submit are two separate
+  // steps in this SDK and the buyer's funds have to land before the answer
+  // does.
+  const pending = new Map();
 
-async function reject(job, reason) {
-  if (typeof job?.reject === 'function') return job.reject(reason);
-  if (typeof job?.respond === 'function') return job.respond(false, reason);
-  throw new AcpJobRefused('the ACP job object exposes no way to refuse a job');
+  agent.on('entry', async (session, entry) => {
+    if (entry.kind === 'message' && entry.contentType === 'requirement' && session.status === 'open') {
+      const job = { serviceRequirement: JSON.parse(entry.content) };
+      try {
+        const deliverable = await answerStandingJob({ registry, job, clock });
+        pending.set(session.jobId, deliverable);
+        await session.setBudget(AssetToken.usdc(0.1, session.chainId));
+      } catch (error) {
+        log.error(`acp: refusing job ${session.jobId}: ${error.message}`);
+      }
+      return;
+    }
+
+    if (entry.kind === 'system' && entry.event?.type === 'job.funded') {
+      const deliverable = pending.get(session.jobId);
+      if (!deliverable) return;
+      pending.delete(session.jobId);
+      await session.submit(JSON.stringify(deliverable));
+      log.log(`acp: answered job ${session.jobId} for ${deliverable.target}: ${deliverable.standing}`);
+    }
+  });
+
+  await agent.start();
+  return { enabled: true, agent, agentWalletAddress: config.agentWalletAddress };
 }

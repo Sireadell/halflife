@@ -2,6 +2,13 @@
 
 Last updated 2026-09-02. Read this first, then README.md.
 
+## Open TODO (added 2026-09-10, not yet actioned)
+
+- Add a cronjob. Not yet clarified whether this means an external scheduled
+  trigger for the sweep (`src/lib/sweep.js`, currently runs on an in-process
+  timer only, so it resets on every restart) or something else. Confirm scope
+  before building.
+
 ## What this is
 
 Halflife is a certification for AI agents that expires. It does not run tests

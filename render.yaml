@@ -173,12 +173,16 @@ services:
 
       # --- Virtuals ACP ------------------------------------------------------
       # All three required together. With any of them missing, halflife is not
-      # hirable over the live network and reports why at /about.
+      # hirable over the live network and reports why at /about. These map to
+      # acp-node-v2's PrivyAlchemyEvmProviderAdapter: the agent's own wallet
+      # address, its Privy wallet id (shown as "EVM WALLET ID" on the agent's
+      # Wallet page), and the private key of a signer added under that same
+      # page's Signers section.
       - key: HALFLIFE_ACP_AGENT_WALLET_ADDRESS
         sync: false
-      - key: HALFLIFE_ACP_PRIVATE_KEY
+      - key: HALFLIFE_ACP_WALLET_ID
         sync: false
-      - key: HALFLIFE_ACP_ENTITY_ID
+      - key: HALFLIFE_ACP_PRIVATE_KEY
         sync: false
 
       # --- the sweep ---------------------------------------------------------

@@ -87,8 +87,8 @@ This is the product's real distribution. Halflife's answer is only worth
 anything at the moment somebody is deciding whether to trust an agent, and ACP
 is where that decision is actually being made, by agents, at volume.
 
-The Node SDK is `@virtuals-protocol/acp-node`, which matches what halflife is
-already written in.
+The Node SDK is `@virtuals-protocol/acp-node-v2`, which matches what halflife
+is already written in.
 
 **Acceptance test:** the demo shows a job arriving from ACP and halflife
 answering it.

@@ -163,17 +163,9 @@ test('the ACP configuration refuses by name rather than defaulting', () => {
   assert.equal(none.ok, false);
   assert.deepEqual(none.missing.sort(), [
     'HALFLIFE_ACP_AGENT_WALLET_ADDRESS',
-    'HALFLIFE_ACP_ENTITY_ID',
     'HALFLIFE_ACP_PRIVATE_KEY',
+    'HALFLIFE_ACP_WALLET_ID',
   ]);
-
-  const bad = resolveAcpConfig({
-    HALFLIFE_ACP_AGENT_WALLET_ADDRESS: '0x1',
-    HALFLIFE_ACP_PRIVATE_KEY: 'not-a-real-key',
-    HALFLIFE_ACP_ENTITY_ID: 'twelve',
-  });
-  assert.equal(bad.ok, false);
-  assert.match(bad.reason, /HALFLIFE_ACP_ENTITY_ID/);
 });
 
 test('with no configuration the ACP service stays off and says why, without touching a network', async () => {
@@ -195,12 +187,13 @@ test('an SDK that does not look like the one this adapter was written against is
     env: {
       HALFLIFE_ACP_AGENT_WALLET_ADDRESS: '0xa0b1c2d3e4f5060708090a0b0c0d0e0f10111213',
       HALFLIFE_ACP_PRIVATE_KEY: 'test-only-not-a-real-key',
-      HALFLIFE_ACP_ENTITY_ID: '42',
+      HALFLIFE_ACP_WALLET_ID: 'test-only-wallet-id',
     },
     // A beta SDK whose method names have moved. Accepting jobs against an API
     // halflife cannot actually deliver through would mean a buyer paying for
     // nothing, which is worse than being visibly off.
     loadSdk: async () => ({ somethingElse: true }),
+    loadChain: async () => ({}),
   });
 
   assert.equal(service.enabled, false);
