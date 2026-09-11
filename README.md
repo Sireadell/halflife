@@ -158,7 +158,7 @@ consent file naming that wallet.
 
 ## Status
 
-Early. The memory layer works and is tested, including the cold-start case: a
+Working end to end. The memory layer works and is tested, including the cold-start case: a
 brand new process recalls what an earlier process wrote. That test is in
 [`test/memory.test.js`](test/memory.test.js) and it is the one test this
 project cannot survive failing.
@@ -215,37 +215,37 @@ different test per role, and no such test packs are planned. See below.
 - **The public page** ([`public/index.html`](public/index.html)), served at `/`
   by the same app. The example certificate on it is hand-written and labelled as
   an example. The rest of its numbers are fetched from the running deployment.
-- **A Render deployment file** ([`render.yaml`](render.yaml)), which has never
-  been run on Render. It says so in its own header comment, along with what each
-  missing variable does to the running service.
+- **A Render deployment file** ([`render.yaml`](render.yaml)), live and running
+  the deployment this README's own numbers are fetched from.
+- **A settled payment on Base.** $0.10 USDC, paid by halflife's own wallet to
+  [StressProof](https://github.com/Sireadell/stressproof) over x402 for one
+  real certification run. Transaction
+  [`0x184f58f282cb376ada9f186bc10eee114f749739fa5ca549e040e35b6c5a7922`](https://basescan.org/tx/0x184f58f282cb376ada9f186bc10eee114f749739fa5ca549e040e35b6c5a7922),
+  checkable on chain by anyone.
 
-### Partly built: the Virtuals integration
+### Registered on Virtuals ACP, live wiring not yet confirmed end to end
 
-**The job handler is built and tested. The live registration is not, and no
-real job has ever arrived.**
+**The job handler is built and tested. The agent is registered on ACP with a
+live job offering. Whether a real job reaches it through the deployed service
+has not yet been confirmed.**
 
 What works and is covered by tests: everything the handler decides. Given a job,
 it produces the deliverable a buyer would receive, including which of the five
 standings applies, what that means for the buyer, and where to check the same
 answer for themselves. Those tests run against fake jobs.
 
-What has never happened: halflife has no registered agent profile on the ACP
-network. `createAcpService()` in [`src/lib/acp.js`](src/lib/acp.js) has never
-been run against the real service, no test exercises it, and
-`@virtuals-protocol/acp-node` is not currently in `package.json`, so on a
-deployment today it reports itself off rather than connecting. It is written to
+What is done outside the test suite: halflife is registered on Virtuals ACP
+with a live job offering ("certifyStanding", $0.10). `createAcpService()` in
+[`src/lib/acp.js`](src/lib/acp.js) is written against
+`@virtuals-protocol/acp-node-v2`, which is in `package.json`. It is written to
 refuse loudly by name if the SDK does not expose what it was written against,
 because a loud refusal at boot is recoverable and a job silently accepted and
 never delivered is a buyer paying for nothing.
 
-`GET /about` says the same thing in its `acp` block, so this claim can be
-checked from outside rather than only read here.
-
-### Not built: a settled payment on Base
-
-No real payment has settled. Not one. See the payment section above for what the
-code does, what the tests cover, and what remains before a real payment can go
-out.
+What has not yet been confirmed: a real job arriving at the deployed service
+and halflife answering it. `GET /about` reports whether ACP is connected on the
+live deployment, so this claim can be checked from outside rather than only
+read here.
 
 Nothing in this README describes something that does not exist, and it stays
 that way as the build goes.
