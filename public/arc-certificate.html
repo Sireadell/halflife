@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Halflife on Arc — certificate</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+  :root {
+    --ink: #1B1A17;
+    --paper: #F4EFE3;
+    --card: #FBF8F0;
+    --line: #DDD5C0;
+    --muted: #7C7462;
+    --valid: #3B5D42;
+    --valid-bg: #E8EFE9;
+    --revoked: #8B3A3A;
+    --revoked-bg: #F7EBEB;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'IBM Plex Sans', sans-serif; }
+  a { color: var(--valid); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+  .serif { font-family: 'Fraunces', serif; }
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px 24px; border-bottom: 1px solid var(--line);
+  }
+  header a.home { font-size: 14px; font-weight: 500; letter-spacing: 0.06em; color: var(--ink); }
+  .tag { font-size: 11px; color: var(--muted); border: 1px solid var(--line); padding: 4px 8px; }
+  main { max-width: 720px; margin: 0 auto; padding: 48px 20px 96px; display: flex; flex-direction: column; gap: 44px; }
+  .card { border: 1px solid var(--line); background: var(--card); }
+  .card-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px 28px; border-bottom: 1px solid var(--line);
+  }
+  .card-head .label { font-size: 12px; letter-spacing: 0.08em; color: var(--muted); }
+  .status-pill { font-size: 12px; font-weight: 500; padding: 5px 12px; border-radius: 2px; }
+  .status-pill.valid { background: var(--valid-bg); color: var(--valid); }
+  .status-pill.revoked { background: var(--revoked-bg); color: var(--revoked); }
+  .card-body { padding: 28px; display: flex; flex-direction: column; gap: 22px; }
+  .agent-name { font-size: 24px; font-weight: 600; word-break: break-all; }
+  .agent-id { font-size: 12px; color: var(--muted); margin-top: 4px; word-break: break-all; }
+  .rule { height: 1px; background: var(--line); }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+  @media (max-width: 640px) { .grid { grid-template-columns: 1fr; } }
+  .field-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .field-value { font-size: 13px; word-break: break-all; }
+  .reason-box {
+    border: 1px solid #E0C4C4; background: #F7EBEB; padding: 16px 18px;
+    display: flex; flex-direction: column; gap: 6px;
+  }
+  .reason-box .field-label { color: var(--revoked); }
+  .btn {
+    align-self: flex-start; padding: 12px 22px; background: var(--ink); color: var(--paper);
+    font-size: 14px; font-weight: 500; border-radius: 3px;
+  }
+  .section-label { font-size: 12px; letter-spacing: 0.08em; color: var(--muted); }
+  .history-item { display: flex; gap: 16px; align-items: flex-start; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+  .dot.valid { background: var(--valid); }
+  .dot.revoked { background: var(--revoked); }
+  .steps { display: flex; flex-direction: column; gap: 14px; }
+  .step { display: flex; gap: 14px; }
+  .step-num { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; color: #A39A82; width: 22px; }
+</style>
+</head>
+<body>
+<header>
+  <a class="home mono" href="/">&larr; HALFLIFE — ARC</a>
+  <div class="tag mono">ARC MAINNET · CHAIN 5042</div>
+</header>
+
+<main>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="label mono">CERTIFICATE</div>
+      <div class="status-pill revoked mono">REVOKED</div>
+    </div>
+    <div class="card-body">
+      <div>
+        <div class="agent-name serif">arc-day3-demo-agent</div>
+        <div class="agent-id mono">Wallet: 0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53</div>
+      </div>
+      <div class="rule"></div>
+      <div class="grid">
+        <div>
+          <div class="field-label mono">ISSUED</div>
+          <div class="field-value">2026-09-20, 10:40:46 UTC — verdict RESILIENT, score 100</div>
+        </div>
+        <div>
+          <div class="field-label mono">CERTIFICATE HASH (ISSUED)</div>
+          <div class="field-value mono">0xbb3735f892a1e75e356aaeb580649832c1419806b89ae8f69977b285fe8830a3</div>
+        </div>
+        <div>
+          <div class="field-label mono">ISSUING TRANSACTION</div>
+          <div class="field-value mono"><a href="https://arc.etherscan.io/tx/0xe21574e8463509ab806bc62af60eac34f9276b584da663adbf4adb3d1565b866" target="_blank" rel="noopener">0xe21574e8...1565b866 &#8599;</a></div>
+        </div>
+        <div>
+          <div class="field-label mono">REVOKED</div>
+          <div class="field-value mono" style="color: var(--revoked);">2026-09-20, 10:40:50 UTC</div>
+        </div>
+        <div>
+          <div class="field-label mono">REVOCATION TRANSACTION</div>
+          <div class="field-value mono"><a href="https://arc.etherscan.io/tx/0x9ec75646190b84a566f6f279bcf21678f78a3d3e310b2f896a691e051876f95b" target="_blank" rel="noopener">0x9ec75646...891e051876f95b &#8599;</a></div>
+        </div>
+        <div style="grid-column: 1 / -1;">
+          <div class="field-label mono">CERTIFICATE HASH (THE RUN THAT TRIGGERED REVOCATION)</div>
+          <div class="field-value mono">0x8e566df80ac7b7b5b13fc0172ebe4ba7c969fc09becd4c7da685259180bd91df</div>
+        </div>
+      </div>
+
+      <div class="reason-box">
+        <div class="field-label mono">REASON FOR REVOCATION</div>
+        <div style="font-size: 14px; color: #5E2323;">
+          This agent now returns success-shaped responses to input it should have
+          rejected, which it did not do when it was certified. It went from
+          RESILIENT to PARTIAL.
+        </div>
+      </div>
+
+      <a class="btn" href="https://arc.etherscan.io/address/0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53" target="_blank" rel="noopener">Verify on Arc Explorer</a>
+    </div>
+  </div>
+
+  <div>
+    <div class="section-label mono" style="margin-bottom: 20px;">CHECK HISTORY</div>
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+      <div class="history-item">
+        <div class="dot valid"></div>
+        <div>
+          <div style="font-size: 15px; font-weight: 500;">Check 1 — 2026-09-20, 10:40:46 UTC</div>
+          <div style="font-size: 14px; color: #3A362E;">RESILIENT, score 100. Certificate issued, hash written to Arc.</div>
+        </div>
+      </div>
+      <div class="history-item">
+        <div class="dot revoked"></div>
+        <div>
+          <div style="font-size: 15px; font-weight: 500;">Check 2 — 2026-09-20, 10:40:50 UTC</div>
+          <div style="font-size: 14px; color: #3A362E;">PARTIAL, score 83. Certificate revoked, revocation hash written to Arc.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div style="border-top: 1px solid var(--line); padding-top: 36px;">
+    <div class="section-label mono" style="margin-bottom: 20px;">HOW TO CHECK THIS YOURSELF</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num serif">1</div>
+        <div style="font-size: 15px; line-height: 1.6;">Copy either transaction hash shown above.</div>
+      </div>
+      <div class="step">
+        <div class="step-num serif">2</div>
+        <div style="font-size: 15px; line-height: 1.6;">Open it on Arc's own explorer, or query <span class="mono">eth_getTransactionReceipt</span> against <span class="mono">rpc.mainnet.arc.io</span> directly.</div>
+      </div>
+      <div class="step">
+        <div class="step-num serif">3</div>
+        <div style="font-size: 15px; line-height: 1.6;">Confirm the transaction status is successful and the sender is the certified agent's own wallet. Decode the log data as UTF-8 and confirm it matches the certificate hash shown here.</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+</body>
+</html>
