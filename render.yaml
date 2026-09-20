@@ -115,7 +115,7 @@ services:
     branch: master
     # Two installs, one for each language the service needs at runtime. The
     # venv path is repeated in HALFLIFE_PYTHON below and the two must agree.
-    buildCommand: npm ci && python3 -m venv .venv && .venv/bin/pip install --upgrade pip && .venv/bin/pip install sibyl-memory-client
+    buildCommand: npm ci && npm run build:judge && python3 -m venv .venv && .venv/bin/pip install --upgrade pip && .venv/bin/pip install sibyl-memory-client
     startCommand: npm start
     healthCheckPath: /health
     disk:
@@ -148,6 +148,29 @@ services:
       # start spending because five variables happen to be present.
       - key: HALFLIFE_PAID_RUNS
         sync: false
+
+      # --- what visitors pay Halflife on Arc --------------------------------
+      # Required before POST /demo/certify/paid can run. The route refuses
+      # before asking for payment when this is missing, because charging a
+      # visitor without being able to write the Arc proof would be indefensible.
+      - key: HALFLIFE_ARC_PRIVATE_KEY
+        sync: false
+      # Optional. Defaults to Arc mainnet's public RPC in code.
+      - key: ARC_RPC_URL
+        sync: false
+      # Optional. Default is the Arc wallet used for this build.
+      - key: HALFLIFE_ARC_X402_PAY_TO
+        sync: false
+      # Optional. Default is 0.10 USDC.
+      - key: HALFLIFE_ARC_X402_PRICE_USDC
+        value: "0.10"
+      # Optional. Default is Circle's official x402 facilitator.
+      - key: HALFLIFE_ARC_X402_FACILITATOR
+        sync: false
+      # Saved on the persistent disk so the proof page can show the latest paid
+      # Arc run after restarts.
+      - key: HALFLIFE_ARC_DEMO_RESULT_PATH
+        value: /var/data/halflife-arc-demo-result.json
 
       # --- payment, all five required together -------------------------------
       # The wallet that pays, and the wallet the target's consent file names.

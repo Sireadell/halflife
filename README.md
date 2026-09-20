@@ -156,6 +156,47 @@ What remains before a real payment can settle is listed in
 public URL, a funded wallet, and a target whose owner has published a standing
 consent file naming that wallet.
 
+## Paid Arc demo route
+
+`POST /demo/certify/paid` is the public Arc path for this hackathon build. A
+visitor pays Halflife first in Arc USDC through x402. Only after that payment
+does Halflife run the certification and write the issue or revoke proof to Arc.
+
+The route refuses before asking for payment if Arc writing is not configured, or
+if the request is missing the agent URL, Arc wallet address, or sample request
+body. That way nobody is charged for a run Halflife cannot record.
+
+The default price is `0.10` USDC on Arc mainnet, paid to
+`0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53`.
+
+After a paid run, Halflife saves a public proof summary and serves it at
+`GET /demo/certify/paid/latest`. The Arc certificate page reads that endpoint
+so the latest paid proof appears publicly without editing the page by hand.
+
+Judges should start at `/judge.html`. It shows live service status, the Arc
+proof links, the latest paid-run proof when one exists, and a wallet flow for a
+fresh paid run. A reviewer can connect an injected wallet, switch or add Arc
+mainnet, pay the x402 bill in Arc USDC, and let the page retry the paid request
+automatically. The same page also has a safe setup check that calls the paid
+route without payment, useful for proving the server will refuse before charging
+when Arc writing is not configured.
+
+The browser wallet code lives in `src/browser/judgePay.js` and is bundled to
+`public/judge-pay.js` with:
+
+```bash
+npm run build:judge
+```
+
+A deployed judge-ready run needs all of these to be true:
+
+- `HALFLIFE_ARC_PRIVATE_KEY` is set, so Halflife can write the Arc proof after a
+  paid run.
+- The Arc writer wallet has enough Arc gas.
+- The reviewer wallet has Arc USDC at
+  `0x3600000000000000000000000000000000000000`.
+- The deployed app includes the current `public/judge-pay.js` bundle.
+
 ## Status
 
 Working end to end. The memory layer works and is tested, including the cold-start case: a
@@ -163,7 +204,7 @@ brand new process recalls what an earlier process wrote. That test is in
 [`test/memory.test.js`](test/memory.test.js) and it is the one test this
 project cannot survive failing.
 
-**110 tests passing.** Counted, not estimated. Run `npm test`.
+**132 tests passing.** Counted, not estimated. Run `npm test`.
 
 The certifier is built and tested. It is in
 [`src/lib/certifier.js`](src/lib/certifier.js) and it is the one operation
@@ -257,6 +298,7 @@ that way as the build goes.
 | Route | What it does |
 |---|---|
 | `GET /` | the public page |
+| `GET /judge.html` | judge console with live status, proof links, latest paid proof and browser wallet payment |
 | `GET /about` | what this deployment is and is not configured to do, probed rather than assumed |
 | `GET /health` | is the process up |
 | `POST /agents` | register an agent at a risk level. Does not certify it |
@@ -267,6 +309,9 @@ that way as the build goes.
 | `GET /due` | whose certificate has run out of time |
 | `POST /sweep` | re-check everything that has |
 | `POST /acp/jobs` | answer a standing question in the shape ACP asks it |
+| `POST /demo/certify/paid` | visitor pays Halflife on Arc, then Halflife certifies and writes Arc proof |
+| `GET /demo/certify/paid/latest` | latest saved paid Arc proof for the public page |
+| `GET /demo/arc-proof/verify` | asks Halflife to verify the built-in Arc proof through Arc RPC |
 
 `:target` is how halflife knows an agent, and it is usually a URL, so it is
 percent-encoded in the path. `?target=` is accepted on the same routes for
@@ -290,6 +335,12 @@ fallback.
 | `HALFLIFE_PAYMENT_NETWORK` | `src/lib/x402Payment.js` | same. Must be `base` or `base-sepolia` |
 | `HALFLIFE_X402_FACILITATOR` | `src/lib/x402Payment.js` | same. Recorded on the journal line so an auditor knows which facilitator settled a given payment |
 | `HALFLIFE_MAX_PAYMENT_USDC` | `src/lib/x402Payment.js` | `0.10`. The ceiling on a single payment, separate from the price. It has a default because it is not a secret and a missing ceiling is more dangerous than a conservative one |
+| `HALFLIFE_ARC_PRIVATE_KEY` | `src/index.js` | the paid Arc demo route refuses before payment and says Arc writing is not configured |
+| `ARC_RPC_URL` | `src/lib/arcChain.js` | Arc mainnet public RPC |
+| `HALFLIFE_ARC_X402_PAY_TO` | `src/lib/arcDemoPaymentGate.js` | `0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53` |
+| `HALFLIFE_ARC_X402_PRICE_USDC` | `src/lib/arcDemoPaymentGate.js` | `0.10` |
+| `HALFLIFE_ARC_X402_FACILITATOR` | `src/lib/arcDemoPaymentGate.js` | Circle's official x402 facilitator |
+| `HALFLIFE_ARC_DEMO_RESULT_PATH` | `src/lib/arcDemoResultStore.js` | `./halflife-arc-demo-result.json`. On Render it should point to `/var/data/halflife-arc-demo-result.json` |
 | `HALFLIFE_ACP_AGENT_WALLET_ADDRESS` | `src/lib/acp.js` | halflife is not hirable over the live ACP network and reports why at `/about`. The rest of the service runs unchanged and `POST /acp/jobs` still answers |
 | `HALFLIFE_ACP_PRIVATE_KEY` | `src/lib/acp.js` | same. Secret |
 | `HALFLIFE_ACP_ENTITY_ID` | `src/lib/acp.js` | same. Must be a whole positive number |

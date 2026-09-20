@@ -44,12 +44,38 @@ const stressproof = (...replies) => ({
  * everything at once.
  */
 let counter = 0;
-async function withApp({ replies = [], now = '2026-09-01T00:00:00.000Z', certification } = {}, fn) {
+async function withApp(
+  {
+    replies = [],
+    now = '2026-09-01T00:00:00.000Z',
+    certification,
+    arcClients = null,
+    arcConfigReason = null,
+    paidArcDemoGate,
+    certifyOnArcFn,
+    arcDemoResultStore,
+    arcProofVerifier,
+  } = {},
+  fn,
+) {
   const memory = new Memory({ dbPath: path.join(dir, `memory-${counter++}.db`) });
   const clock = typeof now === 'function' ? now : () => now;
   const certifier = new Certifier({ memory, stressproof: stressproof(...replies), clock });
   const registry = new Registry({ memory, clock });
-  const app = createApp({ certifier, registry, memory, clock, certification, env: {} });
+  const app = createApp({
+    certifier,
+    registry,
+    memory,
+    clock,
+    certification,
+    env: {},
+    arcClients,
+    arcConfigReason,
+    ...(paidArcDemoGate ? { paidArcDemoGate } : {}),
+    ...(certifyOnArcFn ? { certifyOnArcFn } : {}),
+    ...(arcDemoResultStore ? { arcDemoResultStore } : {}),
+    ...(arcProofVerifier ? { arcProofVerifier } : {}),
+  });
 
   const server = app.listen(0);
   await new Promise((resolve) => server.once('listening', resolve));
@@ -87,6 +113,7 @@ test('/about says what this deployment is and is not configured to do', async ()
     // No settled payment and no live ACP registration is claimed anywhere.
     assert.equal(body.payment.configured, false);
     assert.equal(body.payment.settledPaymentsClaimed, 0);
+    assert.equal(body.arcPaidDemo.payment.enabled, false);
     assert.equal(body.acp.connected, false);
     assert.equal(body.memory.reachable, true, 'the memory status is probed, not assumed');
   });
@@ -308,6 +335,254 @@ test('a deployment that meant to pay and cannot refuses instead of running for f
 
       const swept = await call('POST', '/sweep', {});
       assert.equal(swept.status, 503, 'the sweep cannot spend money it was told to spend and cannot');
+    },
+  );
+});
+
+test('the paid Arc demo refuses before payment if Arc writing is not configured', async () => {
+  let middlewareCalled = false;
+  const paidArcDemoGate = {
+    mode: 'live',
+    enabled: true,
+    config: {
+      network: 'eip155:5042',
+      priceUsdc: '0.10',
+      payTo: '0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53',
+    },
+    middleware: (_req, _res, next) => {
+      middlewareCalled = true;
+      next();
+    },
+    reason: null,
+  };
+
+  await withApp(
+    {
+      paidArcDemoGate,
+      arcConfigReason: 'HALFLIFE_ARC_PRIVATE_KEY is not set',
+    },
+    async ({ call }) => {
+      const { status, body } = await call('POST', '/demo/certify/paid', {
+        targetUrl: 'https://agent.example/v1/chat',
+        agentAddress: '0x7a3f19e0b6d4c9a2f0e1b8d3a5c7e9f0b1d2c281',
+        sampleBody: { q: 1 },
+      });
+      assert.equal(status, 503);
+      assert.match(body.error, /HALFLIFE_ARC_PRIVATE_KEY/);
+      assert.equal(body.ok, false);
+      assert.equal(body.charged, false);
+      assert.equal(body.checked, false);
+      assert.equal(body.arcWritten, false);
+      assert.match(body.summary, /Arc writing key is missing/);
+      assert.equal(middlewareCalled, false, 'no payment should be requested before Arc writing is possible');
+    },
+  );
+});
+
+test('the paid Arc demo validates input before payment middleware runs', async () => {
+  let middlewareCalled = false;
+  const paidArcDemoGate = {
+    mode: 'live',
+    enabled: true,
+    config: {
+      network: 'eip155:5042',
+      priceUsdc: '0.10',
+      payTo: '0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53',
+    },
+    middleware: (_req, _res, next) => {
+      middlewareCalled = true;
+      next();
+    },
+    reason: null,
+  };
+
+  await withApp(
+    {
+      paidArcDemoGate,
+      arcClients: { fake: true },
+    },
+    async ({ call }) => {
+      const { status, body } = await call('POST', '/demo/certify/paid', {
+        targetUrl: 'https://agent.example/v1/chat',
+        agentAddress: 'not-an-address',
+        sampleBody: { q: 1 },
+      });
+      assert.equal(status, 400);
+      assert.match(body.error, /agentAddress/);
+      assert.equal(body.charged, false);
+      assert.equal(body.checked, false);
+      assert.equal(body.arcWritten, false);
+      assert.match(body.summary, /refused before charging/);
+      assert.equal(middlewareCalled, false, 'bad input must not reach payment');
+    },
+  );
+});
+
+test('the paid Arc demo charges, certifies and returns Arc proof', async () => {
+  let middlewareCalled = false;
+  let savedSnapshot = null;
+  const paidArcDemoGate = {
+    mode: 'live',
+    enabled: true,
+    config: {
+      network: 'eip155:5042',
+      priceUsdc: '0.10',
+      payTo: '0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53',
+    },
+    middleware: (_req, res, next) => {
+      middlewareCalled = true;
+      res.set('payment-response', 'fake-settlement');
+      next();
+    },
+    reason: null,
+  };
+
+  let seen;
+  const certifyOnArcFn = async (deps, params) => {
+    seen = { deps, params };
+    return {
+      target: params.targetUrl,
+      checkedAt: '2026-09-20T12:00:00.000Z',
+      measured: true,
+      standing: STANDING.VALID,
+      standingReason: 'valid',
+      currentVerdict: 'RESILIENT',
+      previousVerdict: null,
+      revoked: false,
+      reason: 'first certification',
+      specVersion: 'sp1-test',
+      current: { reportHash: '0xreport' },
+      arc: { written: true, event: 'issued', txHash: '0xarc' },
+      journalLine: 'certified for the first time',
+    };
+  };
+
+  await withApp(
+    {
+      paidArcDemoGate,
+      arcClients: { fake: true },
+      certifyOnArcFn,
+      arcDemoResultStore: {
+        async read() {
+          return savedSnapshot;
+        },
+        async write(snapshot) {
+          savedSnapshot = snapshot;
+          return snapshot;
+        },
+      },
+    },
+    async ({ call }) => {
+      const { status, body } = await call('POST', '/demo/certify/paid', {
+        targetUrl: 'https://agent.example/v1/chat',
+        agentAddress: '0x7a3f19e0b6d4c9a2f0e1b8d3a5c7e9f0b1d2c281',
+        sampleBody: { q: 1 },
+      });
+
+      assert.equal(status, 200);
+      assert.equal(middlewareCalled, true);
+      assert.equal(seen.params.targetUrl, 'https://agent.example/v1/chat');
+      assert.equal(seen.params.request.method, 'POST');
+      assert.deepEqual(seen.params.request.sampleBody, { q: 1 });
+      assert.equal(body.ok, true);
+      assert.equal(body.charged, true);
+      assert.equal(body.checked, true);
+      assert.equal(body.arcWritten, true);
+      assert.match(body.summary, /Paid Arc demo completed/);
+      assert.equal(body.paid, true);
+      assert.equal(body.payment.network, 'eip155:5042');
+      assert.equal(body.arc.txHash, '0xarc');
+      assert.equal(body.reportHash, '0xreport');
+      assert.equal(body.latestResult, 'GET /demo/certify/paid/latest');
+      assert.equal(savedSnapshot.payment.network, 'eip155:5042');
+      assert.equal(savedSnapshot.targetUrl, 'https://agent.example/v1/chat');
+      assert.equal(savedSnapshot.agentAddress, '0x7a3f19e0b6d4c9a2f0e1b8d3a5c7e9f0b1d2c281');
+      assert.equal(savedSnapshot.arc.txHash, '0xarc');
+      assert.equal(savedSnapshot.reportHash, '0xreport');
+    },
+  );
+});
+
+test('the latest paid Arc demo endpoint reads the saved proof without running a check', async () => {
+  let certifyCalled = false;
+  await withApp(
+    {
+      certifyOnArcFn: async () => {
+        certifyCalled = true;
+        throw new Error('should not certify on read');
+      },
+      arcDemoResultStore: {
+        async read() {
+          return {
+            payment: { network: 'eip155:5042' },
+            targetUrl: 'https://agent.example/v1/chat',
+            arc: { txHash: '0xarc' },
+          };
+        },
+        async write() {
+          throw new Error('should not write on read');
+        },
+      },
+    },
+    async ({ call }) => {
+      const { status, body } = await call('GET', '/demo/certify/paid/latest');
+      assert.equal(status, 200);
+      assert.equal(body.ok, true);
+      assert.match(body.summary, /Latest paid Arc demo proof found/);
+      assert.equal(body.payment.network, 'eip155:5042');
+      assert.equal(body.arc.txHash, '0xarc');
+      assert.equal(certifyCalled, false);
+    },
+  );
+});
+
+test('the latest paid Arc demo endpoint says clearly when no paid run exists yet', async () => {
+  await withApp(
+    {
+      arcDemoResultStore: {
+        async read() {
+          return null;
+        },
+        async write() {
+          throw new Error('should not write on read');
+        },
+      },
+    },
+    async ({ call }) => {
+      const { status, body } = await call('GET', '/demo/certify/paid/latest');
+      assert.equal(status, 404);
+      assert.equal(body.ok, false);
+      assert.match(body.summary, /No paid Arc demo run/);
+      assert.match(body.error, /No paid Arc demo run/);
+    },
+  );
+});
+
+test('the judge Arc proof verifier endpoint lets a judge click-check the built-in proof', async () => {
+  let verifierCalled = false;
+  await withApp(
+    {
+      arcProofVerifier: {
+        async verifyManualProof() {
+          verifierCalled = true;
+          return {
+            chain: { id: 5042, name: 'Arc' },
+            ok: true,
+            summary: 'Arc proof verified. Halflife found the expected issue transaction and the expected revoke transaction on Arc.',
+            issued: { ok: true, txHash: '0xissued' },
+            revoked: { ok: true, txHash: '0xrevoked' },
+          };
+        },
+      },
+    },
+    async ({ call }) => {
+      const { status, body } = await call('GET', '/demo/arc-proof/verify');
+      assert.equal(status, 200);
+      assert.equal(verifierCalled, true);
+      assert.equal(body.ok, true);
+      assert.match(body.summary, /Arc proof verified/);
+      assert.equal(body.chain.id, 5042);
+      assert.equal(body.issued.txHash, '0xissued');
     },
   );
 });

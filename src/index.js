@@ -32,6 +32,7 @@ import { startSweeper } from './lib/sweep.js';
 import { createPaidStressProofClient } from './lib/paidStressproof.js';
 import { resolvePaidConfig } from './lib/x402Payment.js';
 import { createAcpService } from './lib/acp.js';
+import { createArcClients } from './lib/arcChain.js';
 
 const PORT = process.env.PORT || 3000;
 
@@ -88,7 +89,38 @@ const certifier = new Certifier({
   stressproof: certification.client ?? createStressProofClient(),
 });
 
-const app = createApp({ certifier, registry, memory, certification });
+function configureArcWriter() {
+  const privateKey = (process.env.HALFLIFE_ARC_PRIVATE_KEY ?? '').trim();
+  if (!privateKey) {
+    return {
+      clients: null,
+      reason: 'HALFLIFE_ARC_PRIVATE_KEY is not set. The paid Arc demo will refuse before payment.',
+    };
+  }
+  try {
+    const rpcUrl = (process.env.ARC_RPC_URL ?? '').trim() || undefined;
+    return {
+      clients: createArcClients({ privateKey, rpcUrl }),
+      reason: null,
+    };
+  } catch (error) {
+    return {
+      clients: null,
+      reason: `HALFLIFE_ARC_PRIVATE_KEY cannot create an Arc wallet: ${error.message}`,
+    };
+  }
+}
+
+const arcWriter = configureArcWriter();
+
+const app = createApp({
+  certifier,
+  registry,
+  memory,
+  certification,
+  arcClients: arcWriter.clients,
+  arcConfigReason: arcWriter.reason,
+});
 
 const server = app.listen(PORT, async () => {
   console.log(`Halflife listening on :${PORT}`);
@@ -103,6 +135,12 @@ const server = app.listen(PORT, async () => {
     console.error(`Certifications: REFUSED. ${certification.reason}`);
     console.error('No check will be run on this deployment until that is fixed. It will not fall back to free runs.');
   }
+
+  console.log(
+    arcWriter.clients
+      ? `Arc paid demo: writer configured for ${arcWriter.clients.account.address}.`
+      : `Arc paid demo: off. ${arcWriter.reason}`,
+  );
 
   // Probed rather than assumed, and probed once at boot so a broken memory is
   // visible immediately instead of on the first request that needed it.

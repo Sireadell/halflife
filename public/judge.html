@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Halflife on Arc Judge Console</title>
+<style>
+  :root {
+    --bg: #f7f3ea;
+    --panel: #fffdf7;
+    --ink: #191917;
+    --muted: #665f51;
+    --line: #ddd3bd;
+    --accent: #245949;
+    --accent-soft: #e5eee9;
+    --bad: #8b3535;
+    --bad-soft: #f5e8e6;
+    --warn: #8a6319;
+    --warn-soft: #f4ead3;
+    --code: #111;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  button, .button {
+    border: 1px solid var(--ink);
+    background: var(--ink);
+    color: #fffdf7;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font: inherit;
+    cursor: pointer;
+  }
+  button.secondary, .button.secondary {
+    background: transparent;
+    color: var(--ink);
+    border-color: var(--line);
+  }
+  input, textarea {
+    width: 100%;
+    border: 1px solid var(--line);
+    background: #fffdf7;
+    color: var(--ink);
+    border-radius: 6px;
+    padding: 10px 12px;
+    font: inherit;
+  }
+  textarea {
+    min-height: 110px;
+    resize: vertical;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .layout { max-width: 1180px; margin: 0 auto; padding: 24px 18px 64px; }
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 8px 0 22px;
+  }
+  h1 { margin: 0 0 8px; font-size: clamp(30px, 5vw, 52px); line-height: 1.03; letter-spacing: 0; }
+  h2 { margin: 0 0 10px; font-size: 15px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  h3 { margin: 0 0 6px; font-size: 18px; line-height: 1.25; }
+  p { margin: 0; color: var(--muted); max-width: 760px; }
+  .nav { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+  .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 18px;
+  }
+  .span-4 { grid-column: span 4; }
+  .span-5 { grid-column: span 5; }
+  .span-6 { grid-column: span 6; }
+  .span-7 { grid-column: span 7; }
+  .span-12 { grid-column: span 12; }
+  @media (max-width: 880px) {
+    header { flex-direction: column; }
+    .nav { justify-content: flex-start; }
+    .span-4, .span-5, .span-6, .span-7 { grid-column: span 12; }
+  }
+  .status-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  @media (max-width: 760px) { .status-strip { grid-template-columns: 1fr; } }
+  .metric {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .metric-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+  .metric-value { margin-top: 6px; font-size: 23px; line-height: 1.15; word-break: break-word; }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 5px 10px;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    white-space: nowrap;
+  }
+  .ok { background: var(--accent-soft); color: var(--accent); }
+  .bad { background: var(--bad-soft); color: var(--bad); }
+  .warn { background: var(--warn-soft); color: var(--warn); }
+  .review-card {
+    display: grid;
+    grid-template-columns: 38px minmax(0, 1fr);
+    gap: 14px;
+    min-height: 100%;
+  }
+  .num {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--ink);
+    color: #fffdf7;
+    display: grid;
+    place-items: center;
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  .form-grid { display: grid; gap: 12px; margin-top: 14px; }
+  .field label {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--muted);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+  }
+  .result {
+    margin-top: 14px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fbf8ef;
+  }
+  .result strong { display: block; margin-bottom: 4px; color: var(--ink); }
+  .row {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr);
+    gap: 12px;
+    padding: 10px 0;
+    border-top: 1px solid var(--line);
+  }
+  .row:first-of-type { border-top: 0; padding-top: 0; }
+  .key { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  .value { word-break: break-word; }
+  pre {
+    margin: 0;
+    background: var(--code);
+    color: #fffdf7;
+    border-radius: 8px;
+    padding: 14px;
+    overflow-x: auto;
+    font-size: 12px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+  }
+  .raw { margin-top: 10px; max-height: 250px; }
+  .list { display: grid; gap: 10px; }
+  .plain-list { margin: 0; padding-left: 18px; color: var(--muted); }
+  .plain-list li { margin: 6px 0; }
+  footer { margin-top: 26px; color: var(--muted); font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="layout">
+  <header>
+    <div>
+      <div class="metric-label mono">Arc Microgrants review screen</div>
+      <h1>Halflife Judge Console</h1>
+      <p>Use these four checks in order. Each one is clickable and shows what happened in plain language, with full app details underneath for anyone who wants to inspect them.</p>
+    </div>
+    <nav class="nav" aria-label="Proof links">
+      <a class="button secondary" href="/arc-certificate.html">Open certificate proof</a>
+      <a class="button secondary" href="/about">Open live app data</a>
+      <a class="button secondary" href="https://arc.etherscan.io/address/0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53" target="_blank" rel="noopener">Open Arc wallet</a>
+    </nav>
+  </header>
+
+  <section class="status-strip" aria-label="Current app status">
+    <div class="panel">
+      <div class="metric">
+        <div>
+          <div class="metric-label mono">App health</div>
+          <div id="service-state" class="metric-value">Checking</div>
+        </div>
+        <span id="service-pill" class="pill warn">Live check</span>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="metric">
+        <div>
+          <div class="metric-label mono">Paid check</div>
+          <div id="arc-state" class="metric-value">Checking</div>
+        </div>
+        <span id="arc-pill" class="pill warn">Arc</span>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="metric">
+        <div>
+          <div class="metric-label mono">Price shown by app</div>
+          <div id="price" class="metric-value">0.10 USDC</div>
+        </div>
+        <span class="pill ok">Arc 5042</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="grid">
+    <div class="panel span-6">
+      <div class="review-card">
+        <div class="num">1</div>
+        <div>
+          <h2>See The App Is Alive</h2>
+          <h3>Halflife checks its own service status.</h3>
+          <p>This should change from checking to ready if the app can answer requests.</p>
+          <div class="actions">
+            <button id="refresh-status">Refresh status</button>
+            <a class="button secondary" href="/about">Open full status</a>
+          </div>
+          <div id="status-result" class="result">
+            <strong>Waiting for the first check</strong>
+            The page runs this check when it opens.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel span-6">
+      <div class="review-card">
+        <div class="num">2</div>
+        <div>
+          <h2>Verify Arc Proof Through Halflife</h2>
+          <h3>The app checks the two Arc records itself.</h3>
+          <p>Click once to make Halflife check the issue record and the revoke record on Arc.</p>
+          <div class="actions">
+            <button id="verify-arc">Verify through app</button>
+            <a class="button secondary" href="https://arc.etherscan.io/tx/0xe21574e8463509ab806bc62af60eac34f9276b584da663adbf4adb3d1565b866" target="_blank" rel="noopener">Issue record</a>
+            <a class="button secondary" href="https://arc.etherscan.io/tx/0x9ec75646190b84a566f6f279bcf21678f78a3d3e310b2f896a691e051876f95b" target="_blank" rel="noopener">Revoke record</a>
+          </div>
+          <div id="arc-summary" class="result">
+            <strong>Ready to verify</strong>
+            This will show whether both Arc records match the certificate history.
+          </div>
+          <pre id="arc-verify-result" class="raw">Full app response will appear here.</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel span-7">
+      <div class="review-card">
+        <div class="num">3</div>
+        <div>
+          <h2>Run A Live Paid Check</h2>
+          <h3>Connect wallet, pay 0.10 USDC on Arc, and run a fresh certification.</h3>
+          <p>A judge can use the sample below or paste their own agent endpoint. The server refuses before payment if it cannot write the Arc proof.</p>
+          <div class="form-grid">
+            <div class="field">
+              <label for="target-url" class="mono">Agent API URL</label>
+              <input id="target-url" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="agent-address" class="mono">Agent Arc wallet</label>
+              <input id="agent-address" autocomplete="off">
+            </div>
+            <div class="field">
+              <label for="sample-body" class="mono">Sample request body</label>
+              <textarea id="sample-body" spellcheck="false"></textarea>
+            </div>
+          </div>
+          <div id="wallet-status" class="result warn">
+            <strong>Wallet not connected</strong>
+            Connect a wallet with Arc USDC to pay and run the check.
+          </div>
+          <div class="result">
+            <strong>Connected wallet</strong>
+            <span id="connected-wallet" class="mono">Not connected</span>
+          </div>
+          <div class="actions">
+            <button id="connect-wallet">Connect wallet</button>
+            <button id="pay-live">Pay and run live check</button>
+            <button class="secondary" id="check-no-pay">Check setup without paying</button>
+            <button class="secondary" id="copy-request">Copy request</button>
+          </div>
+          <div id="paid-summary" class="result">
+            <strong>Ready</strong>
+            Use the live button for the real paid run. Use the setup button only to see whether the server is ready before charging.
+          </div>
+          <pre id="paid-route-result" class="raw">Full app response will appear here.</pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel span-5">
+      <div class="review-card">
+        <div class="num">4</div>
+        <div>
+          <h2>Open The Certificate Proof</h2>
+          <h3>The public certificate page shows the proof history.</h3>
+          <p>The latest paid proof appears here after a successful paid run. Until then, the older Arc proof remains visible.</p>
+          <div class="actions">
+            <a class="button" href="/arc-certificate.html">Open certificate proof</a>
+            <a class="button secondary" href="/demo/certify/paid/latest">Open latest paid proof</a>
+            <button class="secondary" id="refresh-paid">Refresh latest proof</button>
+          </div>
+          <div id="paid-run" class="list result">
+            <strong>Checking latest paid proof</strong>
+            The page is looking for the latest saved paid run.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel span-12">
+      <h2>What A Judge Should See In Under 60 Seconds</h2>
+      <ul class="plain-list">
+        <li>The app is alive, because the status check returns from Halflife itself.</li>
+        <li>The Arc proof is not just a link, because Halflife verifies the records through the app.</li>
+        <li>The paid path is usable, because a judge can connect a wallet, pay on Arc, and trigger a fresh run.</li>
+        <li>The certificate proof is open for inspection, including the saved paid proof when one exists.</li>
+      </ul>
+    </div>
+  </section>
+
+  <footer class="mono">Halflife on Arc. Arc network number 5042. Paid app path: /demo/certify/paid.</footer>
+</div>
+
+<script type="module" src="/judge-pay.js"></script>
+</body>
+</html>

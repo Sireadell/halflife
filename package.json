@@ -6,6 +6,7 @@
   "description": "Halflife: a certification that expires. Remembers every agent it has certified, re-certifies them, and revokes the certificate when the agent gets worse.",
   "main": "src/index.js",
   "scripts": {
+    "build:judge": "esbuild src/browser/judgePay.js --bundle --format=esm --target=es2022 --outfile=public/judge-pay.js",
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
     "test": "node --test"
@@ -13,8 +14,11 @@
   "dependencies": {
     "@account-kit/infra": "^4.88.5",
     "@virtuals-protocol/acp-node-v2": "^0.1.12",
-    "@x402/core": "^2.24.0",
-    "@x402/evm": "^2.24.0",
+    "@x402/core": "^2.26.0",
+    "@x402/evm": "^2.26.0",
+    "@x402/express": "^2.26.0",
+    "@x402/fetch": "^2.26.0",
+    "esbuild": "^0.25.12",
     "ethers": "^6.17.0",
     "express": "^4.19.2",
     "viem": "^2.56.3"

@@ -64,12 +64,32 @@
   .steps { display: flex; flex-direction: column; gap: 14px; }
   .step { display: flex; gap: 14px; }
   .step-num { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; color: #A39A82; width: 22px; }
+  .paid-panel {
+    border: 1px solid var(--line);
+    background: #fffdf7;
+    padding: 22px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .paid-row {
+    display: grid;
+    grid-template-columns: 150px minmax(0, 1fr);
+    gap: 12px;
+    font-size: 13px;
+  }
+  @media (max-width: 640px) { .paid-row { grid-template-columns: 1fr; gap: 4px; } }
+  .paid-key { color: var(--muted); }
+  .paid-value { word-break: break-all; }
 </style>
 </head>
 <body>
 <header>
   <a class="home mono" href="/">&larr; HALFLIFE — ARC</a>
-  <div class="tag mono">ARC MAINNET · CHAIN 5042</div>
+  <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; justify-content: flex-end;">
+    <a class="tag mono" href="/judge.html">JUDGE CONSOLE</a>
+    <div class="tag mono">ARC MAINNET · CHAIN 5042</div>
+  </div>
 </header>
 
 <main>
@@ -126,6 +146,13 @@
   </div>
 
   <div>
+    <div class="section-label mono" style="margin-bottom: 20px;">LATEST PAID ARC RUN</div>
+    <div id="paid-run" class="paid-panel">
+      <div style="font-size: 14px; color: var(--muted);">Looking for the latest paid run...</div>
+    </div>
+  </div>
+
+  <div>
     <div class="section-label mono" style="margin-bottom: 20px;">CHECK HISTORY</div>
     <div style="display: flex; flex-direction: column; gap: 20px;">
       <div class="history-item">
@@ -164,5 +191,55 @@
   </div>
 
 </main>
+<script>
+  const paidRun = document.getElementById('paid-run');
+  const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  }[char]));
+  const shortHash = (value) => {
+    const text = String(value ?? '');
+    return text.length > 18 ? `${text.slice(0, 10)}...${text.slice(-8)}` : text;
+  };
+  const row = (key, value) => `
+    <div class="paid-row">
+      <div class="paid-key mono">${esc(key)}</div>
+      <div class="paid-value mono">${esc(value)}</div>
+    </div>
+  `;
+
+  async function loadPaidRun() {
+    try {
+      const response = await fetch('/demo/certify/paid/latest', { headers: { accept: 'application/json' } });
+      if (response.status === 404) {
+        paidRun.innerHTML = '<div style="font-size: 14px; color: var(--muted);">No paid Arc run has been recorded on this deployment yet. The manual Arc proof above remains the current public proof.</div>';
+        return;
+      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
+      const txHash = data.arc && data.arc.txHash;
+      const txLink = txHash
+        ? `<a href="https://arc.etherscan.io/tx/${esc(txHash)}" target="_blank" rel="noopener">${esc(shortHash(txHash))} &#8599;</a>`
+        : esc(data.arc && data.arc.reason ? data.arc.reason : 'No Arc transaction was needed for this run');
+      paidRun.innerHTML = [
+        row('SAVED', data.savedAt || 'unknown'),
+        row('PAID', `${data.payment?.price?.amount || 'unknown'} ${data.payment?.price?.currency || 'USDC'} on ${data.payment?.network || 'Arc'}`),
+        row('AGENT WALLET', data.agentAddress || 'unknown'),
+        row('TARGET', data.targetUrl || 'unknown'),
+        row('STANDING', data.standing || 'unknown'),
+        row('VERDICT', data.currentVerdict || 'unknown'),
+        row('REPORT HASH', data.reportHash || 'missing'),
+        `<div class="paid-row"><div class="paid-key mono">ARC TX</div><div class="paid-value mono">${txLink}</div></div>`,
+      ].join('');
+    } catch (error) {
+      paidRun.innerHTML = `<div style="font-size: 14px; color: var(--revoked);">Could not load the latest paid run: ${esc(error.message)}</div>`;
+    }
+  }
+
+  loadPaidRun();
+</script>
 </body>
 </html>

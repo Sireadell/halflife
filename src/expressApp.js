@@ -16,6 +16,9 @@
 //   POST /sweep                     re-check everything that has
 //
 //   POST /acp/jobs                  answer a standing question in the shape ACP asks it
+//   POST /demo/certify/paid         paid public Arc demo: pay Halflife, certify, write Arc memo
+//   GET  /demo/certify/paid/latest  latest public paid Arc demo result
+//   GET  /demo/arc-proof/verify     check the built-in Arc proof against Arc RPC
 //
 // `:target` is how halflife knows an agent, and it is usually a URL, so it is
 // percent-encoded in the path. `?target=` is accepted on the same routes for
@@ -49,6 +52,10 @@ import { answerStandingJob, AcpJobRefused, SERVICE as ACP_SERVICE } from './lib/
 import { resolvePaidConfig } from './lib/x402Payment.js';
 import { resolveAcpConfig } from './lib/acp.js';
 import { createDemoGuard } from './lib/demoGuard.js';
+import { certifyOnArc } from './lib/arcCertifier.js';
+import { createArcDemoPaymentGate } from './lib/arcDemoPaymentGate.js';
+import { buildPaidArcDemoSnapshot, createArcDemoResultStore } from './lib/arcDemoResultStore.js';
+import { createArcProofVerifier } from './lib/arcProofVerifier.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -88,6 +95,21 @@ function targetOf(req) {
   return target.length > 0 ? target : null;
 }
 
+function paidArcDemoRefusal(reason, next) {
+  const plainReason = reason.includes('HALFLIFE_ARC_PRIVATE_KEY')
+    ? 'the Arc writing key is missing'
+    : reason.replace(/[.]+$/, '');
+  return {
+    ok: false,
+    charged: false,
+    checked: false,
+    arcWritten: false,
+    summary: `Paid route refused before charging because ${plainReason}.`,
+    error: reason,
+    next,
+  };
+}
+
 /**
  * The three states a deployment's certification route can be in.
  *
@@ -108,8 +130,14 @@ export function createApp({
   registry,
   memory,
   certification = { mode: CERTIFICATION.FREE, reason: null },
-  clock = () => new Date().toISOString(),
   env = process.env,
+  arcClients = null,
+  arcConfigReason = null,
+  paidArcDemoGate = createArcDemoPaymentGate({ env }),
+  certifyOnArcFn = certifyOnArc,
+  arcDemoResultStore = createArcDemoResultStore({ env }),
+  arcProofVerifier = createArcProofVerifier({ env }),
+  clock = () => new Date().toISOString(),
 } = {}) {
   if (!certifier || !registry) {
     throw new TypeError('createApp requires a certifier and a registry');
@@ -191,6 +219,21 @@ export function createApp({
         price: paid.ok ? { amount: paid.priceUsdc, currency: 'USDC', network: paid.networkLabel } : null,
         settledPaymentsClaimed: 0,
       },
+      arcPaidDemo: {
+        route: 'POST /demo/certify/paid',
+        payment: {
+          mode: paidArcDemoGate.mode,
+          enabled: Boolean(paidArcDemoGate.enabled && paidArcDemoGate.middleware && arcClients),
+          reason: paidArcDemoGate.reason ?? (!arcClients ? arcConfigReason ?? 'Arc writing is not configured' : null),
+          price: paidArcDemoGate.config
+            ? { amount: paidArcDemoGate.config.priceUsdc, currency: 'USDC', network: paidArcDemoGate.config.network }
+            : null,
+          payTo: paidArcDemoGate.config?.payTo ?? null,
+        },
+        note:
+          'A visitor pays Halflife on Arc first. Only then does Halflife buy/run the certification and write issue or revoke proof to Arc when the result changes.',
+        latestResult: 'GET /demo/certify/paid/latest',
+      },
       acp: {
         connected: acp.ok,
         reason: acp.ok ? null : acp.reason,
@@ -208,6 +251,164 @@ export function createApp({
   });
 
   app.get('/health', (_req, res) => res.json({ ok: true, at: clock() }));
+
+  app.get('/demo/arc-proof/verify', async (_req, res) => {
+    try {
+      res.json(await arcProofVerifier.verifyManualProof());
+    } catch (error) {
+      fail(res, error);
+    }
+  });
+
+  app.get('/demo/certify/paid/latest', async (_req, res) => {
+    try {
+      const latest = await arcDemoResultStore.read();
+      if (!latest) {
+        return res.status(404).json({
+          ok: false,
+          summary: 'No paid Arc demo run has been recorded yet.',
+          error: 'No paid Arc demo run has been recorded yet.',
+          next: 'Run POST /demo/certify/paid after configuring Arc writing and x402 payment.',
+        });
+      }
+      res.json({
+        ok: true,
+        summary: 'Latest paid Arc demo proof found. This is the most recent paid run Halflife saved for the judge page.',
+        ...latest,
+      });
+    } catch (error) {
+      fail(res, error);
+    }
+  });
+
+  const validatePaidArcDemo = (req, res, next) => {
+    if (!paidArcDemoGate.enabled || !paidArcDemoGate.middleware) {
+      const reason = paidArcDemoGate.reason ?? 'the Arc paid demo payment setup is not configured';
+      return res.status(503).json({
+        ...paidArcDemoRefusal(
+          reason,
+          'Set the Arc payment settings, then try the paid demo again.',
+        ),
+        note: 'No payment was requested, no check was run, and nothing was written to Arc.',
+      });
+    }
+    if (!arcClients) {
+      const reason = arcConfigReason ?? 'Arc writing is not configured';
+      return res.status(503).json({
+        ...paidArcDemoRefusal(
+          reason,
+          'Set the Arc writing key, then try the paid demo again.',
+        ),
+        note: 'No payment was requested, no check was run, and nothing was written to Arc.',
+      });
+    }
+
+    const targetUrl = typeof req.body?.targetUrl === 'string' ? req.body.targetUrl.trim() : '';
+    const agentAddress = typeof req.body?.agentAddress === 'string' ? req.body.agentAddress.trim() : '';
+    const request = req.body?.request && typeof req.body.request === 'object'
+      ? req.body.request
+      : {
+          method: req.body?.method,
+          sampleBody: req.body?.sampleBody,
+          authHeaders: req.body?.authHeaders,
+        };
+
+    if (!targetUrl) {
+      return res.status(400).json({
+        ...paidArcDemoRefusal(
+          'targetUrl is missing',
+          'Send targetUrl, the agent API address Halflife should check.',
+        ),
+        error: 'targetUrl is required: the agent API Halflife should certify',
+      });
+    }
+    if (!/^0x[0-9a-fA-F]{40}$/.test(agentAddress)) {
+      return res.status(400).json({
+        ...paidArcDemoRefusal(
+          'agentAddress is missing or is not a valid Arc wallet address',
+          'Send an Arc wallet address that starts with 0x and has 40 letters or numbers after it.',
+        ),
+        error: 'agentAddress is required and must be a valid Arc wallet address',
+      });
+    }
+    if (!request || typeof request !== 'object' || request.sampleBody == null || typeof request.sampleBody !== 'object') {
+      return res.status(400).json({
+        ...paidArcDemoRefusal(
+          'sampleBody is missing',
+          'Send sampleBody so StressProof has one example request to test.',
+        ),
+        error:
+          'sampleBody is required, either at the top level or inside request.sampleBody, so StressProof has one valid request shape to mutate.',
+      });
+    }
+
+    req.paidArcDemo = {
+      targetUrl,
+      agentAddress,
+      request: {
+        ...request,
+        method: (request.method ?? 'POST').toUpperCase(),
+      },
+    };
+    next();
+  };
+
+  const paidArcDemoMiddlewares = [validatePaidArcDemo];
+  if (paidArcDemoGate.middleware && arcClients) paidArcDemoMiddlewares.push(paidArcDemoGate.middleware);
+
+  app.post('/demo/certify/paid', ...paidArcDemoMiddlewares, async (req, res) => {
+    try {
+      const result = await certifyOnArcFn(
+        { certifier, arcClients },
+        {
+          targetUrl: req.paidArcDemo.targetUrl,
+          agentAddress: req.paidArcDemo.agentAddress,
+          request: req.paidArcDemo.request,
+        },
+      );
+      const payment = {
+        network: paidArcDemoGate.config.network,
+        price: { amount: paidArcDemoGate.config.priceUsdc, currency: 'USDC' },
+        payTo: paidArcDemoGate.config.payTo,
+      };
+      const latest = buildPaidArcDemoSnapshot({
+        payment,
+        input: req.paidArcDemo,
+        result,
+        savedAt: clock(),
+      });
+      await arcDemoResultStore.write(latest);
+
+      res.json({
+        ok: true,
+        charged: true,
+        checked: true,
+        arcWritten: Boolean(result.arc?.written),
+        summary: result.arc?.written
+          ? 'Paid Arc demo completed. The visitor paid, Halflife ran the check, and Halflife wrote the result to Arc.'
+          : `Paid Arc demo completed. The visitor paid and Halflife ran the check, but no new Arc write was needed: ${result.arc?.reason ?? 'the stored certificate did not need to change'}.`,
+        paid: true,
+        payment,
+        target: result.target,
+        agentAddress: req.paidArcDemo.agentAddress,
+        checkedAt: result.checkedAt,
+        measured: result.measured,
+        standing: result.standing,
+        standingReason: result.standingReason,
+        currentVerdict: result.currentVerdict,
+        previousVerdict: result.previousVerdict,
+        revoked: result.revoked,
+        reason: result.reason,
+        specVersion: result.specVersion,
+        reportHash: result.current?.reportHash ?? null,
+        arc: result.arc,
+        journalLine: result.journalLine,
+        latestResult: 'GET /demo/certify/paid/latest',
+      });
+    } catch (error) {
+      fail(res, error);
+    }
+  });
 
   // --- registration ---------------------------------------------------------
   app.post('/agents', async (req, res) => {
@@ -287,7 +488,9 @@ export function createApp({
   // their results are comparable. A caller that sends its own is trusted with
   // it, including auth headers, which are used for this one run and never
   // stored.
-  // NOTE: demoGuard middleware available but not yet applied pending x402 payment gate implementation
+  // The open certify route remains for internal operation. The public Arc demo
+  // route above is the paid path a visitor can call without spending our wallet
+  // before they have paid Halflife.
   app.post('/agents/:target/certify', async (req, res) => {
     const target = targetOf(req);
     if (!target) return res.status(400).json({ error: 'name the agent to certify' });
