@@ -48,6 +48,7 @@ import { sweepDue } from './lib/sweep.js';
 import { answerStandingJob, AcpJobRefused, SERVICE as ACP_SERVICE } from './lib/acp.js';
 import { resolvePaidConfig } from './lib/x402Payment.js';
 import { resolveAcpConfig } from './lib/acp.js';
+import { createDemoGuard } from './lib/demoGuard.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -132,6 +133,8 @@ export function createApp({
   const app = express();
   app.use(express.json({ limit: '256kb' }));
   app.use(express.static(path.join(HERE, '..', 'public')));
+
+  const demoGuard = process.env.NODE_ENV !== 'test' ? createDemoGuard() : (req, res, next) => next();
 
   // --- what this deployment is ---------------------------------------------
   //
@@ -284,6 +287,7 @@ export function createApp({
   // their results are comparable. A caller that sends its own is trusted with
   // it, including auth headers, which are used for this one run and never
   // stored.
+  // NOTE: demoGuard middleware available but not yet applied pending x402 payment gate implementation
   app.post('/agents/:target/certify', async (req, res) => {
     const target = targetOf(req);
     if (!target) return res.status(400).json({ error: 'name the agent to certify' });
