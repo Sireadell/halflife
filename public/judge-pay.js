@@ -26924,7 +26924,32 @@ async function connectWallet() {
   showWallet("ok", "Wallet connected", `Connected ${shortHash(address)} on Arc. The next button can pay and run the check.`);
   return address;
 }
-function summarizePaidResponse(status, body) {
+function decodeFacilitatorError(headers) {
+  const header = headers?.get?.("payment-required");
+  if (!header) return null;
+  try {
+    const decoded = JSON.parse(atob(header));
+    return decoded?.error ?? null;
+  } catch {
+    return null;
+  }
+}
+var FACILITATOR_ERROR_EXPLANATIONS = {
+  self_transfer: "The connected wallet is the same address the app is set to receive payment at. Connect a different wallet to pay.",
+  insufficient_balance: "The connected wallet doesn't have enough deposited in Circle's Gateway to cover this payment.",
+  authorization_validity_too_short: "The payment window offered was too short for Circle's facilitator to accept.",
+  invalid_signature: "The payment signature was not accepted. Try again, or reconnect the wallet.",
+  unsupported_scheme: "The app and Circle's facilitator disagree on how to sign this payment."
+};
+function summarizePaidResponse(status, body, headers) {
+  const facilitatorError = decodeFacilitatorError(headers);
+  if (facilitatorError) {
+    return {
+      title: "Payment was rejected",
+      body: FACILITATOR_ERROR_EXPLANATIONS[facilitatorError] ?? `Circle's facilitator refused this payment: ${facilitatorError}`,
+      state: "bad"
+    };
+  }
   const text = `${status} ${plainBodyText(body)}`.toLowerCase();
   if (status === 402 || text.includes("payment") || text.includes("x-payment")) {
     return {
@@ -27050,7 +27075,7 @@ async function checkSetupWithoutPaying() {
       body: JSON.stringify(samplePayload())
     });
     const body = await readJson(response);
-    const summary = summarizePaidResponse(response.status, body);
+    const summary = summarizePaidResponse(response.status, body, response.headers);
     setResult("paid-summary", summary.title, summary.body, summary.state);
     out.textContent = JSON.stringify({ status: response.status, body }, null, 2);
     loadPaidRun();
@@ -27090,7 +27115,7 @@ async function payAndRun() {
       body: JSON.stringify(payload)
     });
     const body = await readJson(response);
-    const summary = summarizePaidResponse(response.status, body);
+    const summary = summarizePaidResponse(response.status, body, response.headers);
     setResult("paid-summary", summary.title, summary.body, summary.state);
     out.textContent = JSON.stringify({ status: response.status, payer: walletAddress, body }, null, 2);
     loadPaidRun();
