@@ -7,7 +7,7 @@ const ARC_RPC_URL = 'https://rpc.mainnet.arc.io';
 const ARC_EXPLORER = 'https://arc.etherscan.io';
 // Halflife's own real demo agent (source: demo-agent/server.js in this repo,
 // deployed separately at github.com/Sireadell/halflife-demo-agent). It's ours,
-// so we could complete StressProof's one-time consent proof for it ourselves —
+// so we could complete StressProof's one-time consent proof for it ourselves,
 // a judge needs no cooperation from anyone to see a real run complete.
 const SAMPLE_AGENT = 'https://halflife-demo-agent.onrender.com';
 const SAMPLE_AGENT_ADDRESS = '0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53';
@@ -116,13 +116,15 @@ const shortHash = (value) => {
   return text.length > 20 ? `${text.slice(0, 10)}...${text.slice(-8)}` : text;
 };
 const row = (key, value) => `<div class="row"><div class="key mono">${esc(key)}</div><div class="value">${value}</div></div>`;
-const setPill = (id, state, text) => {
+const setTag = (id, state, text) => {
   const node = byId(id);
-  node.className = `pill ${state}`;
+  if (!node) return;
+  node.className = `tag ${state}`;
   node.textContent = text;
 };
 const setResult = (id, title, body, state = 'warn') => {
   const node = byId(id);
+  if (!node) return;
   node.className = `result ${state}`;
   node.innerHTML = `<strong>${esc(title)}</strong>${esc(body)}`;
 };
@@ -266,7 +268,7 @@ async function connectWallet() {
   paidFetch = wrapFetchWithPayment(window.fetch.bind(window), client);
 
   byId('connected-wallet').textContent = shortHash(address);
-  setPill('wallet-pill', 'ok', 'Connected');
+  setTag('wallet-tag', 'ok', 'Connected');
   showWallet('ok', 'Wallet connected', `Connected ${shortHash(address)} on Arc. The next button can pay and run the check.`);
   return address;
 }
@@ -318,10 +320,10 @@ async function loadAbout() {
     const memoryReady = Boolean(data.memory?.reachable);
     const arc = data.arcPaidDemo?.payment;
     byId('service-state').textContent = memoryReady ? 'Ready' : 'Limited';
-    setPill('service-pill', memoryReady ? 'ok' : 'warn', memoryReady ? 'Ready' : 'Limited');
+    setTag('service-tag', memoryReady ? 'ok' : 'warn', memoryReady ? 'Ready' : 'Limited');
     byId('arc-state').textContent = arc?.enabled ? 'Ready' : 'Safe stop';
     byId('price').textContent = `${arc?.price?.amount || '0.10'} ${arc?.price?.currency || 'USDC'}`;
-    setPill('arc-pill', arc?.enabled ? 'ok' : 'warn', arc?.enabled ? 'Payment on' : 'No charge');
+    setTag('arc-tag', arc?.enabled ? 'ok' : 'warn', arc?.enabled ? 'Payment on' : 'No charge');
     setResult(
       'status-result',
       memoryReady ? 'App is alive' : 'App answered with limits',
@@ -333,8 +335,8 @@ async function loadAbout() {
   } catch (error) {
     byId('service-state').textContent = 'Offline';
     byId('arc-state').textContent = 'Unknown';
-    setPill('service-pill', 'bad', 'Offline');
-    setPill('arc-pill', 'bad', 'Check');
+    setTag('service-tag', 'bad', 'Offline');
+    setTag('arc-tag', 'bad', 'Check');
     setResult('status-result', 'Could not reach app', `The status check failed: ${error.message}`, 'bad');
   }
 }
@@ -426,7 +428,20 @@ async function payAndRun() {
 
     const aboutResponse = await fetch('/about', { headers: { accept: 'application/json' } });
     const about = await readJson(aboutResponse);
-    const priceUsdc = about.arcPaidDemo?.payment?.price?.amount ?? '0.10';
+    const arcPayment = about.arcPaidDemo?.payment;
+
+    // Checked before touching the wallet on purpose: ensureGatewayBalance below
+    // spends real gas moving the visitor's money into Circle's Gateway. Doing
+    // that before knowing the server can even accept payment means a visitor
+    // pays a real on-chain cost for a run that was always going to be refused.
+    if (!arcPayment?.enabled) {
+      const reason = arcPayment?.reason || 'Arc writing is not configured on this deployment.';
+      setResult('paid-summary', 'Cannot run a paid check here', reason, 'bad');
+      out.textContent = JSON.stringify({ error: reason }, null, 2);
+      return;
+    }
+
+    const priceUsdc = arcPayment.price?.amount ?? '0.10';
     const requiredAtomicAmount = parseUnits(priceUsdc, 6);
 
     setResult('paid-summary', 'Checking Gateway balance', 'Making sure enough Arc USDC is deposited with Circle before paying.');

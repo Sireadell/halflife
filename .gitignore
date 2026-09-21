@@ -12,3 +12,8 @@ __pycache__/
 # Local design review drafts, not for the repo
 docs/frontend-mockup.html
 docs/FRONTEND_REDESIGN_RATIONALE.md
+docs/frontend-mockup-desktop.png
+docs/frontend-mockup-mobile.png
+docs/reference-guildpay.png
+docs/reference-lynx.png
+DESIGN-IS-2026-09-21/

@@ -3,346 +3,583 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Halflife on Arc Judge Console</title>
+<title>Halflife on Arc</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23111613'/%3E%3Cpath d='M9 12h14v8H9z' fill='none' stroke='white' stroke-width='3'/%3E%3C/svg%3E">
 <style>
-  :root {
-    --bg: #f7f3ea;
-    --panel: #fffdf7;
-    --ink: #191917;
-    --muted: #665f51;
-    --line: #ddd3bd;
-    --accent: #245949;
-    --accent-soft: #e5eee9;
-    --bad: #8b3535;
-    --bad-soft: #f5e8e6;
-    --warn: #8a6319;
-    --warn-soft: #f4ead3;
-    --code: #111;
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    background: var(--bg);
-    color: var(--ink);
-    font: 15px/1.55 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-  }
-  a { color: var(--accent); text-decoration: none; }
-  a:hover { text-decoration: underline; }
-  button, .button {
-    border: 1px solid var(--ink);
-    background: var(--ink);
-    color: #fffdf7;
-    padding: 10px 14px;
-    border-radius: 6px;
-    font: inherit;
-    cursor: pointer;
-  }
-  button.secondary, .button.secondary {
-    background: transparent;
-    color: var(--ink);
-    border-color: var(--line);
-  }
-  input, textarea {
-    width: 100%;
-    border: 1px solid var(--line);
-    background: #fffdf7;
-    color: var(--ink);
-    border-radius: 6px;
-    padding: 10px 12px;
-    font: inherit;
-  }
-  textarea {
-    min-height: 110px;
-    resize: vertical;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 13px;
-    line-height: 1.5;
-  }
-  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-  .layout { max-width: 1180px; margin: 0 auto; padding: 24px 18px 64px; }
-  header {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 20px;
-    padding: 8px 0 22px;
-  }
-  h1 { margin: 0 0 8px; font-size: clamp(30px, 5vw, 52px); line-height: 1.03; letter-spacing: 0; }
-  h2 { margin: 0 0 10px; font-size: 15px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
-  h3 { margin: 0 0 6px; font-size: 18px; line-height: 1.25; }
-  p { margin: 0; color: var(--muted); max-width: 760px; }
-  .nav { display: flex; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
-  .grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 16px; }
-  .panel {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 18px;
-  }
-  .span-4 { grid-column: span 4; }
-  .span-5 { grid-column: span 5; }
-  .span-6 { grid-column: span 6; }
-  .span-7 { grid-column: span 7; }
-  .span-12 { grid-column: span 12; }
-  @media (max-width: 880px) {
-    header { flex-direction: column; }
-    .nav { justify-content: flex-start; }
-    .span-4, .span-5, .span-6, .span-7 { grid-column: span 12; }
-  }
-  .status-strip {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 12px;
-    margin-bottom: 16px;
-  }
-  @media (max-width: 760px) { .status-strip { grid-template-columns: 1fr; } }
-  .metric {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-  }
-  .metric-label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
-  .metric-value { margin-top: 6px; font-size: 23px; line-height: 1.15; word-break: break-word; }
-  .pill {
-    display: inline-flex;
-    align-items: center;
-    border-radius: 999px;
-    padding: 5px 10px;
-    font-size: 12px;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-    white-space: nowrap;
-  }
-  .ok { background: var(--accent-soft); color: var(--accent); }
-  .bad { background: var(--bad-soft); color: var(--bad); }
-  .warn { background: var(--warn-soft); color: var(--warn); }
-  .review-card {
-    display: grid;
-    grid-template-columns: 38px minmax(0, 1fr);
-    gap: 14px;
-    min-height: 100%;
-  }
-  .num {
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    background: var(--ink);
-    color: #fffdf7;
-    display: grid;
-    place-items: center;
-    font-size: 13px;
-    font-weight: 700;
-  }
-  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
-  .form-grid { display: grid; gap: 12px; margin-top: 14px; }
-  .field label {
-    display: block;
-    margin-bottom: 6px;
-    color: var(--muted);
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: .06em;
-  }
-  .result {
-    margin-top: 14px;
-    padding: 12px;
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    background: #fbf8ef;
-  }
-  .result strong { display: block; margin-bottom: 4px; color: var(--ink); }
-  .row {
-    display: grid;
-    grid-template-columns: 150px minmax(0, 1fr);
-    gap: 12px;
-    padding: 10px 0;
-    border-top: 1px solid var(--line);
-  }
-  .row:first-of-type { border-top: 0; padding-top: 0; }
-  .key { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
-  .value { word-break: break-word; }
-  pre {
-    margin: 0;
-    background: var(--code);
-    color: #fffdf7;
-    border-radius: 8px;
-    padding: 14px;
-    overflow-x: auto;
-    font-size: 12px;
-    line-height: 1.5;
-    white-space: pre-wrap;
-  }
-  .raw { margin-top: 10px; max-height: 250px; }
-  .list { display: grid; gap: 10px; }
-  .plain-list { margin: 0; padding-left: 18px; color: var(--muted); }
-  .plain-list li { margin: 6px 0; }
-  footer { margin-top: 26px; color: var(--muted); font-size: 13px; }
+:root {
+  --page: #eef1ee;
+  --paper: #ffffff;
+  --surface: #f6f7f4;
+  --ink: #111613;
+  --muted: #606861;
+  --line: #d9ded8;
+  --blue: #2b5d9a;
+  --blue-soft: #eaf1fb;
+  --red: #963a34;
+  --red-soft: #f8e5e2;
+  --amber: #80611a;
+  --amber-soft: #f7efd9;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font: 15px/1.5 Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+a { color: inherit; text-decoration: none; }
+a:hover { text-decoration: underline; text-underline-offset: 3px; }
+button, .button {
+  min-height: 44px;
+  border: 1px solid var(--ink);
+  border-radius: 7px;
+  padding: 11px 16px;
+  background: var(--ink);
+  color: #fff;
+  font: 800 14px/1.2 inherit;
+  cursor: pointer;
+}
+button.secondary, .button.secondary {
+  background: #fff;
+  color: var(--ink);
+  border-color: var(--line);
+}
+input, textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--ink);
+  padding: 11px 12px;
+  font: inherit;
+}
+textarea {
+  min-height: 116px;
+  resize: vertical;
+  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+h1, h2, h3, p { margin: 0; }
+h1 {
+  margin-top: 18px;
+  font-size: clamp(43px, 6vw, 76px);
+  line-height: .98;
+  letter-spacing: 0;
+}
+h2 { font-size: 31px; line-height: 1.08; letter-spacing: 0; }
+h3 { font-size: 18px; line-height: 1.25; letter-spacing: 0; }
+p { color: var(--muted); }
+pre {
+  margin: 0;
+  max-height: 255px;
+  overflow: auto;
+  border: 1px solid #20251f;
+  border-radius: 8px;
+  background: #111613;
+  color: #f7f7f2;
+  padding: 14px;
+  white-space: pre-wrap;
+  font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.page {
+  width: min(1320px, calc(100% - 40px));
+  margin: 30px auto;
+  background: var(--paper);
+  border: 1px solid #e1e5df;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 20px 55px rgba(24, 32, 28, .08);
+}
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  padding: 24px 38px;
+  border-bottom: 1px solid var(--line);
+}
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 850;
+}
+.mark {
+  width: 29px;
+  height: 29px;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  border-radius: 7px;
+}
+.mark::before {
+  content: "";
+  width: 15px;
+  height: 9px;
+  border: 2px solid #fff;
+  border-top: 0;
+}
+.navlinks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 22px;
+  color: var(--muted);
+  font-size: 14px;
+}
+.hero {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 70px 26px 42px;
+  text-align: center;
+}
+.eyebrow, .label, .key {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.lede {
+  max-width: 670px;
+  margin: 22px auto 0;
+  color: var(--muted);
+  font-size: 19px;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+.hero .actions { justify-content: center; margin-top: 30px; }
+.story-wrap { padding: 8px 38px 64px; }
+.story {
+  max-width: 1160px;
+  margin: auto;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  overflow: hidden;
+  box-shadow: 0 22px 55px rgba(20, 29, 24, .10);
+}
+.appbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 20px;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+}
+.appbrand {
+  font-size: 13px;
+  font-weight: 850;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+}
+.network { color: var(--muted); font-size: 12px; }
+.case-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 25px 26px 23px;
+  background: #fff;
+}
+.case-head h2 { margin-top: 5px; }
+.agent { margin-top: 8px; color: var(--muted); word-break: break-all; }
+.tag {
+  align-self: start;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 7px 9px;
+  color: var(--muted);
+  background: #fff;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.tag.ok { border-color: #9fb7d3; background: var(--blue-soft); color: var(--blue); }
+.tag.bad { border-color: #d7a5a0; background: var(--red-soft); color: var(--red); }
+.tag.warn { border-color: #d9c47f; background: var(--amber-soft); color: var(--amber); }
+.timeline {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: #fff;
+}
+.event {
+  min-height: 135px;
+  padding: 19px 21px;
+  border-right: 1px solid var(--line);
+}
+.event:last-child { border-right: 0; }
+.event strong {
+  display: block;
+  margin-top: 9px;
+  font-size: 18px;
+  line-height: 1.2;
+}
+.event p { margin-top: 5px; font-size: 13px; }
+.event.fail { background: var(--red-soft); }
+.event.fail .label { color: var(--red); }
+.story-body {
+  display: grid;
+  grid-template-columns: 1.05fr .95fr;
+  gap: 18px;
+  padding: 20px;
+}
+.panel {
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fff;
+  overflow: hidden;
+}
+.panel-head {
+  padding: 17px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.panel-head h3 { margin-top: 4px; }
+.panel-body { padding: 18px; }
+.comparison {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.cell {
+  min-height: 108px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+}
+.cell.fail { border-color: #e3b9b4; background: var(--red-soft); }
+.cell strong { display: block; margin-top: 7px; font-size: 16px; line-height: 1.25; }
+.cell p { margin-top: 5px; font-size: 12px; }
+.check {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-top: 14px;
+  padding-top: 15px;
+  border-top: 1px solid var(--line);
+}
+.check p { font-size: 13px; }
+.record-list { display: grid; }
+.record {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.record:last-child { border-bottom: 0; }
+.record strong { display: block; font-size: 15px; }
+.record p { margin-top: 3px; font-size: 12px; }
+.record a { align-self: center; color: var(--blue); font-size: 13px; font-weight: 800; white-space: nowrap; }
+.live-section {
+  padding: 58px 38px;
+  background: var(--surface);
+  border-top: 1px solid var(--line);
+}
+.shell { max-width: 1160px; margin: auto; }
+.section-title {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 22px;
+  margin-bottom: 18px;
+}
+.section-title p { max-width: 470px; }
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.metric {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 16px;
+}
+.metric-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+.metric-value { margin-top: 8px; font-size: 24px; line-height: 1.1; word-break: break-word; }
+.grid {
+  display: grid;
+  grid-template-columns: 1.06fr .94fr;
+  gap: 16px;
+}
+.field { display: grid; gap: 6px; margin-top: 12px; }
+.result {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  padding: 12px;
+  color: var(--muted);
+}
+.result strong { display: block; margin-bottom: 4px; color: var(--ink); }
+.result.ok { border-color: #9fb7d3; background: var(--blue-soft); }
+.result.bad { border-color: #d7a5a0; background: var(--red-soft); color: #57231f; }
+.result.warn { border-color: #d9c47f; background: var(--amber-soft); color: #564113; }
+.row {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--line);
+}
+.row:first-of-type { border-top: 0; padding-top: 0; }
+.value { word-break: break-word; }
+footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 22px 38px;
+  color: var(--muted);
+  font-size: 13px;
+}
+@media (max-width: 900px) {
+  .story-body, .grid, .status-grid { grid-template-columns: 1fr; }
+  .timeline { grid-template-columns: 1fr; }
+  .event { min-height: 0; border-right: 0; border-bottom: 1px solid var(--line); }
+  .event:last-child { border-bottom: 0; }
+  .section-title { align-items: start; flex-direction: column; }
+}
+@media (max-width: 640px) {
+  .page { width: calc(100% - 16px); margin: 8px auto; border-radius: 12px; }
+  .topbar, footer { align-items: flex-start; flex-direction: column; padding: 19px; }
+  .navlinks { gap: 13px; }
+  .hero { padding: 46px 20px 30px; text-align: left; }
+  h1 { font-size: 37px; }
+  .lede { margin-left: 0; font-size: 16px; }
+  .hero .actions, .actions { justify-content: start; }
+  button, .button { width: 100%; }
+  .story-wrap, .live-section { padding-left: 13px; padding-right: 13px; }
+  .case-head { align-items: start; flex-direction: column; padding: 20px; }
+  .case-head h2 { font-size: 25px; }
+  .comparison { grid-template-columns: 1fr; }
+  .check, .record { align-items: stretch; flex-direction: column; }
+  .row { grid-template-columns: 1fr; gap: 4px; }
+}
 </style>
 </head>
 <body>
-<div class="layout">
-  <header>
-    <div>
-      <div class="metric-label mono">Arc Microgrants review screen</div>
-      <h1>Halflife Judge Console</h1>
-      <p>Use these four checks in order. Each one is clickable and shows what happened in plain language, with full app details underneath for anyone who wants to inspect them.</p>
-    </div>
-    <nav class="nav" aria-label="Proof links">
-      <a class="button secondary" href="/arc-certificate.html">Open certificate proof</a>
-      <a class="button secondary" href="/about">Open live app data</a>
-      <a class="button secondary" href="https://arc.etherscan.io/address/0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53" target="_blank" rel="noopener">Open Arc wallet</a>
+<div class="page">
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="Halflife home"><span class="mark" aria-hidden="true"></span><span>Halflife</span></a>
+    <nav class="navlinks" aria-label="Primary">
+      <a href="#history">Proof history</a>
+      <a href="#live">Run paid check</a>
+      <a href="/arc-certificate.html">Certificate page</a>
+      <a href="https://github.com/Sireadell/halflife" target="_blank" rel="noopener">GitHub</a>
     </nav>
   </header>
 
-  <section class="status-strip" aria-label="Current app status">
-    <div class="panel">
-      <div class="metric">
-        <div>
-          <div class="metric-label mono">App health</div>
-          <div id="service-state" class="metric-value">Checking</div>
-        </div>
-        <span id="service-pill" class="pill warn">Live check</span>
+  <main id="top">
+    <section class="hero">
+      <div class="eyebrow">Public agent certification history on Arc</div>
+      <h1>See when an agent stops keeping its promise.</h1>
+      <p class="lede">Halflife tests an agent, writes the result to Arc, and leaves a public record when a later check fails.</p>
+      <div class="actions">
+        <a class="button" href="#live">Run a paid check</a>
+        <button class="secondary" id="verify-arc">Verify Arc proof</button>
       </div>
-    </div>
-    <div class="panel">
-      <div class="metric">
-        <div>
-          <div class="metric-label mono">Paid check</div>
-          <div id="arc-state" class="metric-value">Checking</div>
-        </div>
-        <span id="arc-pill" class="pill warn">Arc</span>
-      </div>
-    </div>
-    <div class="panel">
-      <div class="metric">
-        <div>
-          <div class="metric-label mono">Price shown by app</div>
-          <div id="price" class="metric-value">0.01 USDC</div>
-        </div>
-        <span class="pill ok">Arc 5042</span>
-      </div>
-    </div>
-  </section>
+    </section>
 
-  <section class="grid">
-    <div class="panel span-6">
-      <div class="review-card">
-        <div class="num">1</div>
-        <div>
-          <h2>See The App Is Alive</h2>
-          <h3>Halflife checks its own service status.</h3>
-          <p>This should change from checking to ready if the app can answer requests.</p>
-          <div class="actions">
-            <button id="refresh-status">Refresh status</button>
-            <a class="button secondary" href="/about">Open full status</a>
+    <section class="story-wrap" id="history">
+      <article class="story" aria-label="Public certificate history for the Arc day 3 demo agent">
+        <div class="appbar">
+          <span class="appbrand">Halflife / Certificate history</span>
+          <span class="network">Arc mainnet</span>
+        </div>
+        <div class="case-head">
+          <div>
+            <span class="label">Verified demonstration record</span>
+            <h2>arc-day3-demo-agent</h2>
+            <p class="agent mono">0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53</p>
           </div>
-          <div id="status-result" class="result">
-            <strong>Waiting for the first check</strong>
-            The page runs this check when it opens.
+          <span class="tag bad">Revoked</span>
+        </div>
+        <div class="timeline">
+          <div class="event">
+            <span class="label">September 20, 2026, 10:40:49 UTC</span>
+            <strong>Certificate written to Arc</strong>
+            <p>RESILIENT, score 100</p>
+          </div>
+          <div class="event">
+            <span class="label">September 20, 2026, 10:40:52 UTC</span>
+            <strong>Second result written to Arc</strong>
+            <p>PARTIAL, score 83</p>
+          </div>
+          <div class="event fail">
+            <span class="label">September 20, 2026, 10:40:52 UTC</span>
+            <strong>Certificate revoked</strong>
+            <p>The issue and revoke records are both public.</p>
           </div>
         </div>
-      </div>
-    </div>
-
-    <div class="panel span-6">
-      <div class="review-card">
-        <div class="num">2</div>
-        <div>
-          <h2>Verify Arc Proof Through Halflife</h2>
-          <h3>The app checks the two Arc records itself.</h3>
-          <p>Click once to make Halflife check the issue record and the revoke record on Arc.</p>
-          <div class="actions">
-            <button id="verify-arc">Verify through app</button>
-            <a class="button secondary" href="https://arc.etherscan.io/tx/0xe21574e8463509ab806bc62af60eac34f9276b584da663adbf4adb3d1565b866" target="_blank" rel="noopener">Issue record</a>
-            <a class="button secondary" href="https://arc.etherscan.io/tx/0x9ec75646190b84a566f6f279bcf21678f78a3d3e310b2f896a691e051876f95b" target="_blank" rel="noopener">Revoke record</a>
-          </div>
-          <div id="arc-summary" class="result">
-            <strong>Ready to verify</strong>
-            This will show whether both Arc records match the certificate history.
-          </div>
-          <pre id="arc-verify-result" class="raw">Full app response will appear here.</pre>
-        </div>
-      </div>
-    </div>
-
-    <div class="panel span-7">
-      <div class="review-card">
-        <div class="num">3</div>
-        <div>
-          <h2>Run A Live Paid Check</h2>
-          <h3>Connect wallet, pay 0.01 USDC on Arc, and run a fresh certification.</h3>
-          <p>A judge can use the sample below or paste their own agent endpoint. The server refuses before payment if it cannot write the Arc proof.</p>
-          <div class="form-grid">
-            <div class="field">
-              <label for="target-url" class="mono">Agent API URL</label>
-              <input id="target-url" autocomplete="off">
+        <div class="story-body">
+          <section class="panel">
+            <div class="panel-head">
+              <span class="label">Why it was revoked</span>
+              <h3>The demo agent changed its response.</h3>
             </div>
-            <div class="field">
-              <label for="agent-address" class="mono">Agent Arc wallet</label>
-              <input id="agent-address" autocomplete="off">
+            <div class="panel-body">
+              <div class="comparison">
+                <div class="cell">
+                  <span class="label">First result</span>
+                  <strong>It rejected input it should reject.</strong>
+                  <p>RESILIENT, score 100.</p>
+                </div>
+                <div class="cell fail">
+                  <span class="label">Second result</span>
+                  <strong>It returned a response shaped as success.</strong>
+                  <p>PARTIAL, score 83.</p>
+                </div>
+              </div>
+              <div class="check">
+                <p>This is the real Arc demonstration record. It proves Halflife can publish both the original certificate and its revocation.</p>
+                <a class="button secondary" href="/demo/arc-proof/verify">Open verifier</a>
+              </div>
+              <div id="arc-summary" class="result warn">
+                <strong>Ready to verify</strong>
+                Use the button above to ask Halflife to check both Arc records.
+              </div>
+              <pre id="arc-verify-result">Full app response will appear here.</pre>
             </div>
-            <div class="field">
-              <label for="sample-body" class="mono">Sample request body</label>
-              <textarea id="sample-body" spellcheck="false"></textarea>
+          </section>
+          <section class="panel">
+            <div class="panel-head">
+              <span class="label">Records on Arc</span>
+              <h3>Open the proof yourself.</h3>
             </div>
+            <div class="record-list">
+              <div class="record">
+                <div><strong>Certificate issued</strong><p>September 20, 2026, 10:40:49 UTC</p></div>
+                <a href="https://arc.etherscan.io/tx/0xe21574e8463509ab806bc62af60eac34f9276b584da663adbf4adb3d1565b866" target="_blank" rel="noopener">Open record</a>
+              </div>
+              <div class="record">
+                <div><strong>Certificate revoked</strong><p>September 20, 2026, 10:40:52 UTC</p></div>
+                <a href="https://arc.etherscan.io/tx/0x9ec75646190b84a566f6f279bcf21678f78a3d3e310b2f896a691e051876f95b" target="_blank" rel="noopener">Open record</a>
+              </div>
+              <div class="record">
+                <div><strong>Latest paid run</strong><p>Saved result and payment proof</p></div>
+                <a href="/demo/certify/paid/latest">Open proof</a>
+              </div>
+            </div>
+          </section>
+        </div>
+      </article>
+    </section>
+
+    <section class="live-section" id="live">
+      <div class="shell">
+        <div class="section-title">
+          <div>
+            <span class="label">Live path</span>
+            <h2>Pay, run, then inspect the record.</h2>
           </div>
-          <div id="wallet-status" class="result warn">
-            <strong>Wallet not connected</strong>
-            Connect a wallet with Arc USDC to pay and run the check.
+          <p>This page is wired to the real Halflife routes. A judge can verify the old Arc proof, check whether payment is enabled, and run the paid certification path from here.</p>
+        </div>
+
+        <div class="status-grid" aria-label="Current app status">
+          <div class="metric">
+            <div class="metric-head"><span class="key mono">App health</span><span id="service-tag" class="tag warn">Checking</span></div>
+            <div id="service-state" class="metric-value">Checking</div>
           </div>
-          <div class="result">
-            <strong>Connected wallet</strong>
-            <span id="connected-wallet" class="mono">Not connected</span>
+          <div class="metric">
+            <div class="metric-head"><span class="key mono">Paid route</span><span id="arc-tag" class="tag warn">Checking</span></div>
+            <div id="arc-state" class="metric-value">Checking</div>
           </div>
-          <div class="actions">
-            <button id="connect-wallet">Connect wallet</button>
-            <button id="pay-live">Pay and run live check</button>
-            <button class="secondary" id="check-no-pay">Check setup without paying</button>
-            <button class="secondary" id="copy-request">Copy request</button>
+          <div class="metric">
+            <div class="metric-head"><span class="key mono">Price shown by app</span><span id="wallet-tag" class="tag warn">Wallet off</span></div>
+            <div id="price" class="metric-value">Checking</div>
           </div>
-          <div id="paid-summary" class="result">
-            <strong>Ready</strong>
-            Use the live button for the real paid run. Use the setup button only to see whether the server is ready before charging.
-          </div>
-          <pre id="paid-route-result" class="raw">Full app response will appear here.</pre>
+        </div>
+
+        <div class="grid">
+          <section class="panel">
+            <div class="panel-head">
+              <span class="label">Run a paid check</span>
+              <h3>Use the demo agent or paste another agent endpoint.</h3>
+            </div>
+            <div class="panel-body">
+              <div class="field">
+                <label for="target-url" class="key mono">Agent API URL</label>
+                <input id="target-url" autocomplete="off">
+              </div>
+              <div class="field">
+                <label for="agent-address" class="key mono">Agent Arc wallet</label>
+                <input id="agent-address" autocomplete="off">
+              </div>
+              <div class="field">
+                <label for="sample-body" class="key mono">Sample request body</label>
+                <textarea id="sample-body" spellcheck="false"></textarea>
+              </div>
+              <div id="wallet-status" class="result warn">
+                <strong>Wallet not connected</strong>
+                Connect a wallet with Arc USDC to pay and run the check.
+              </div>
+              <div class="result">
+                <strong>Connected wallet</strong>
+                <span id="connected-wallet" class="mono">Not connected</span>
+              </div>
+              <div class="actions">
+                <button id="connect-wallet">Connect wallet</button>
+                <button id="pay-live">Pay and run live check</button>
+                <button class="secondary" id="check-no-pay">Check setup without paying</button>
+                <button class="secondary" id="copy-request">Copy request</button>
+              </div>
+              <div id="paid-summary" class="result warn">
+                <strong>Ready</strong>
+                Use the paid button for the real run. Use setup check only to see whether the server is ready before charging.
+              </div>
+              <pre id="paid-route-result">Full app response will appear here.</pre>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="panel-head">
+              <span class="label">Operational checks</span>
+              <h3>What the judge can inspect without trusting us.</h3>
+            </div>
+            <div class="panel-body">
+              <div class="actions" style="margin-top:0">
+                <button class="secondary" id="refresh-status">Refresh status</button>
+                <button class="secondary" id="refresh-paid">Refresh latest proof</button>
+                <a class="button secondary" href="/about">Open app status</a>
+                <a class="button secondary" href="/arc-certificate.html">Open certificate page</a>
+              </div>
+              <div id="status-result" class="result warn">
+                <strong>Waiting for the first check</strong>
+                The page runs this check when it opens.
+              </div>
+              <div id="paid-run" class="result warn">
+                <strong>Checking latest paid proof</strong>
+                The page is looking for the latest saved paid run.
+              </div>
+            </div>
+          </section>
         </div>
       </div>
-    </div>
+    </section>
+  </main>
 
-    <div class="panel span-5">
-      <div class="review-card">
-        <div class="num">4</div>
-        <div>
-          <h2>Open The Certificate Proof</h2>
-          <h3>The public certificate page shows the proof history.</h3>
-          <p>The latest paid proof appears here after a successful paid run. Until then, the older Arc proof remains visible.</p>
-          <div class="actions">
-            <a class="button" href="/arc-certificate.html">Open certificate proof</a>
-            <a class="button secondary" href="/demo/certify/paid/latest">Open latest paid proof</a>
-            <button class="secondary" id="refresh-paid">Refresh latest proof</button>
-          </div>
-          <div id="paid-run" class="list result">
-            <strong>Checking latest paid proof</strong>
-            The page is looking for the latest saved paid run.
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="panel span-12">
-      <h2>What A Judge Should See In Under 60 Seconds</h2>
-      <ul class="plain-list">
-        <li>The app is alive, because the status check returns from Halflife itself.</li>
-        <li>The Arc proof is not just a link, because Halflife verifies the records through the app.</li>
-        <li>The paid path is usable, because a judge can connect a wallet, pay on Arc, and trigger a fresh run.</li>
-        <li>The certificate proof is open for inspection, including the saved paid proof when one exists.</li>
-      </ul>
-    </div>
-  </section>
-
-  <footer class="mono">Halflife on Arc. Arc network number 5042. Paid app path: /demo/certify/paid.</footer>
+  <footer>
+    <span class="mono">Halflife on Arc mainnet</span>
+    <span>Certificates stay accountable after the first pass.</span>
+  </footer>
 </div>
 
 <script type="module" src="/judge-pay.js"></script>

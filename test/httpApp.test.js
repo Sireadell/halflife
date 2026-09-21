@@ -575,14 +575,69 @@ test('the judge Arc proof verifier endpoint lets a judge click-check the built-i
         },
       },
     },
-    async ({ call }) => {
-      const { status, body } = await call('GET', '/demo/arc-proof/verify');
+    async ({ base }) => {
+      // Explicit Accept header, matching what judgePay.js actually sends: the
+      // route also serves an HTML view of the same proof to a plain browser
+      // visit, so a request with no stated preference is not the right check
+      // for the JSON contract this test cares about.
+      const response = await fetch(`${base}/demo/arc-proof/verify`, { headers: { accept: 'application/json' } });
+      const status = response.status;
+      const body = await response.json();
       assert.equal(status, 200);
       assert.equal(verifierCalled, true);
       assert.equal(body.ok, true);
       assert.match(body.summary, /Arc proof verified/);
       assert.equal(body.chain.id, 5042);
       assert.equal(body.issued.txHash, '0xissued');
+    },
+  );
+});
+
+test('the Arc proof verifier shows a designed page when opened in a browser', async () => {
+  await withApp(
+    {
+      arcProofVerifier: {
+        async verifyManualProof() {
+          return {
+            chain: { id: 5042, name: 'Arc' },
+            ok: true,
+            summary: 'Arc proof verified. Halflife found the expected issue transaction and the expected revoke transaction on Arc.',
+            issued: {
+              ok: true,
+              txHash: '0xe21574e8463509ab806bc62af60eac34f9276b584da663adbf4adb3d1565b866',
+              summary: 'Arc proof verified: this transaction issued a certificate.',
+              payload: {
+                agent: '0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53',
+                certificateHash: '0xbb3735f892a1e75e356aaeb580649832c1419806b89ae8f69977b285fe8830a3',
+                at: '2026-09-20T10:40:46.954Z',
+              },
+            },
+            revoked: {
+              ok: true,
+              txHash: '0x9ec75646190b84a566f6f279bcf21678f78a3d3e310b2f896a691e051876f95b',
+              summary: 'Arc proof verified: this transaction revoked a certificate.',
+              payload: {
+                agent: '0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53',
+                certificateHash: '0x8e566df80ac7b7b5b13fc0172ebe4ba7c969fc09becd4c7da685259180bd91df',
+                at: '2026-09-20T10:40:50.012Z',
+                reason: 'Certificate revoked. This agent now returns success-shaped responses to input it should have rejected.',
+              },
+            },
+          };
+        },
+      },
+    },
+    async ({ base }) => {
+      const response = await fetch(`${base}/demo/arc-proof/verify`, {
+        headers: { accept: 'text/html' },
+      });
+      const html = await response.text();
+      assert.equal(response.status, 200);
+      assert.match(response.headers.get('content-type'), /text\/html/);
+      assert.match(html, /The issue and revoke records match/);
+      assert.match(html, /Verified on Arc/);
+      assert.match(html, /0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53/);
+      assert.match(html, /Show raw verifier response/);
     },
   );
 });

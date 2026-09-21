@@ -110,6 +110,113 @@ function paidArcDemoRefusal(reason, next) {
   };
 }
 
+const htmlEscape = (value) =>
+  String(value ?? '').replace(/[&<>"']/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  })[char]);
+
+const shortHash = (value) => {
+  const text = String(value ?? '');
+  return text.length > 22 ? `${text.slice(0, 10)}...${text.slice(-8)}` : text;
+};
+
+function renderArcProofPage(proof) {
+  const explorer = 'https://arc.etherscan.io/tx/';
+  const issuedPayload = proof.issued?.payload ?? {};
+  const revokedPayload = proof.revoked?.payload ?? {};
+  const agent = revokedPayload.agent ?? issuedPayload.agent ?? 'unknown';
+  const issuedHash = proof.issued?.txHash ?? null;
+  const revokedHash = proof.revoked?.txHash ?? null;
+  const issuedCertificate = issuedPayload.certificateHash ?? 'unknown';
+  const revokedCertificate = revokedPayload.certificateHash ?? 'unknown';
+  const reason = revokedPayload.reason ?? 'The certificate was revoked after the later check no longer matched the original certificate condition.';
+
+  const record = ({ title, status, txHash, certificateHash, at, summary }) => `
+    <article class="record">
+      <div>
+        <span class="label">${htmlEscape(title)}</span>
+        <h2>${htmlEscape(status)}</h2>
+        <p>${htmlEscape(summary)}</p>
+      </div>
+      <dl>
+        <div><dt>Time</dt><dd>${htmlEscape(at ?? 'unknown')}</dd></div>
+        <div><dt>Certificate hash</dt><dd class="mono">${htmlEscape(certificateHash)}</dd></div>
+        <div><dt>Transaction</dt><dd class="mono">${txHash ? `<a href="${explorer}${htmlEscape(txHash)}" target="_blank" rel="noopener">${htmlEscape(shortHash(txHash))}</a>` : 'missing'}</dd></div>
+      </dl>
+    </article>`;
+
+  return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Halflife Arc Proof</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23111613'/%3E%3Cpath d='M9 12h14v8H9z' fill='none' stroke='white' stroke-width='3'/%3E%3C/svg%3E">
+<style>
+:root{--page:#eef1ee;--paper:#fff;--surface:#f6f7f4;--ink:#111613;--muted:#606861;--line:#d9ded8;--blue:#2b5d9a;--blue-soft:#eaf1fb;--red:#963a34;--red-soft:#f8e5e2}
+*{box-sizing:border-box}body{margin:0;background:var(--page);color:var(--ink);font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}a{color:var(--blue);text-decoration:none}a:hover{text-decoration:underline;text-underline-offset:3px}.page{width:min(1080px,calc(100% - 40px));margin:30px auto;background:var(--paper);border:1px solid #e1e5df;border-radius:16px;overflow:hidden;box-shadow:0 20px 55px rgba(24,32,28,.08)}header{display:flex;justify-content:space-between;gap:18px;padding:24px 30px;border-bottom:1px solid var(--line)}.brand{color:var(--ink);font-size:18px;font-weight:850}.nav{display:flex;gap:16px;flex-wrap:wrap}.hero{padding:54px 30px 30px}.label{color:var(--muted);font-size:11px;font-weight:850;letter-spacing:.08em;text-transform:uppercase}h1,h2,p{margin:0}h1{max-width:780px;margin-top:16px;font-size:clamp(42px,6vw,72px);line-height:.98;letter-spacing:0}h2{margin-top:8px;font-size:23px;line-height:1.12}.lede{max-width:690px;margin-top:20px;color:var(--muted);font-size:18px}.status{display:inline-flex;margin-top:26px;border:1px solid #9fb7d3;border-radius:5px;padding:8px 10px;background:var(--blue-soft);color:var(--blue);font-size:12px;font-weight:900;letter-spacing:.06em;text-transform:uppercase}.agent{margin-top:18px;color:var(--muted);word-break:break-all}.records{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:0 30px 30px}.record{border:1px solid var(--line);border-radius:9px;background:var(--surface);padding:18px}.record:last-child{background:var(--red-soft);border-color:#d7a5a0}.record p{margin-top:8px;color:var(--muted)}dl{display:grid;gap:12px;margin:18px 0 0}dt{color:var(--muted);font-size:11px;font-weight:850;letter-spacing:.08em;text-transform:uppercase}dd{margin:4px 0 0;word-break:break-word}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}.reason{margin:0 30px 30px;border:1px solid #d7a5a0;border-radius:9px;background:var(--red-soft);padding:18px}.reason p{margin-top:8px;color:#57231f}.raw{padding:0 30px 34px}details{border:1px solid var(--line);border-radius:9px;background:#fff}summary{cursor:pointer;padding:14px 16px;font-weight:800}pre{margin:0;border-top:1px solid var(--line);padding:16px;max-height:360px;overflow:auto;background:#111613;color:#f7f7f2;font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;white-space:pre-wrap}footer{display:flex;justify-content:space-between;gap:18px;padding:20px 30px;border-top:1px solid var(--line);color:var(--muted);font-size:13px}@media(max-width:760px){.page{width:calc(100% - 16px);margin:8px auto;border-radius:12px}header,footer{flex-direction:column;padding:19px}.hero{padding:42px 19px 24px}h1{font-size:37px}.records{grid-template-columns:1fr;padding:0 19px 24px}.reason,.raw{margin-left:19px;margin-right:19px}.raw{padding-left:0;padding-right:0}}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <a class="brand" href="/judge.html">Halflife</a>
+    <nav class="nav" aria-label="Proof links">
+      <a href="/judge.html#history">Proof history</a>
+      <a href="${explorer}${htmlEscape(issuedHash)}" target="_blank" rel="noopener">Issue tx</a>
+      <a href="${explorer}${htmlEscape(revokedHash)}" target="_blank" rel="noopener">Revoke tx</a>
+    </nav>
+  </header>
+  <main>
+    <section class="hero">
+      <span class="label">Arc proof verifier</span>
+      <h1>The issue and revoke records match.</h1>
+      <p class="lede">${htmlEscape(proof.summary)}</p>
+      <div class="status">${proof.ok ? 'Verified on Arc' : 'Needs review'}</div>
+      <p class="agent mono">Agent wallet: ${htmlEscape(agent)}</p>
+    </section>
+    <section class="records">
+      ${record({
+        title: 'Certificate issued',
+        status: proof.issued?.ok ? 'Issue record verified' : 'Issue record needs review',
+        txHash: issuedHash,
+        certificateHash: issuedCertificate,
+        at: issuedPayload.at,
+        summary: proof.issued?.summary,
+      })}
+      ${record({
+        title: 'Certificate revoked',
+        status: proof.revoked?.ok ? 'Revoke record verified' : 'Revoke record needs review',
+        txHash: revokedHash,
+        certificateHash: revokedCertificate,
+        at: revokedPayload.at,
+        summary: proof.revoked?.summary,
+      })}
+    </section>
+    <section class="reason">
+      <span class="label">Why it matters</span>
+      <p>${htmlEscape(reason)}</p>
+    </section>
+    <section class="raw">
+      <details>
+        <summary>Show raw verifier response</summary>
+        <pre>${htmlEscape(JSON.stringify(proof, null, 2))}</pre>
+      </details>
+    </section>
+  </main>
+  <footer>
+    <span class="mono">Arc chain ${htmlEscape(proof.chain?.id ?? '5042')}</span>
+    <span>This page is generated from Halflife's live verifier route.</span>
+  </footer>
+</div>
+</body>
+</html>`;
+}
+
 /**
  * The three states a deployment's certification route can be in.
  *
@@ -252,9 +359,13 @@ export function createApp({
 
   app.get('/health', (_req, res) => res.json({ ok: true, at: clock() }));
 
-  app.get('/demo/arc-proof/verify', async (_req, res) => {
+  app.get('/demo/arc-proof/verify', async (req, res) => {
     try {
-      res.json(await arcProofVerifier.verifyManualProof());
+      const proof = await arcProofVerifier.verifyManualProof();
+      if (req.accepts(['html', 'json']) === 'html') {
+        return res.type('html').send(renderArcProofPage(proof));
+      }
+      res.json(proof);
     } catch (error) {
       fail(res, error);
     }
