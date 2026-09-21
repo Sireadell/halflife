@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Halflife — product page</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+  body { margin: 0; background: #F4EFE3; font-family: 'IBM Plex Sans', sans-serif; color: #1B1A17; }
+  a { color: #3B5D42; text-decoration: none; }
+  a:hover { color: #2A4230; }
+  .serif { font-family: 'Fraunces', serif; }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+</style>
+</helmet>
+
+<div style="width: 1440px; min-height: 3080px; box-sizing: border-box; display: flex; flex-direction: column;">
+
+  <!-- NAV -->
+  <div style="display: flex; align-items: center; justify-content: space-between; padding: 24px 72px; border-bottom: 1px solid #DDD5C0;">
+    <div style="font-family: 'Fraunces', serif; font-weight: 600; font-size: 22px; letter-spacing: -0.01em;">Halflife</div>
+    <div style="display: flex; gap: 40px; align-items: center; font-size: 15px; color: #4A4638;">
+      <a href="#how">How it works</a>
+      <a href="#proof">Proof</a>
+      <a href="#certify">Certify an agent</a>
+      <a href="https://github.com/Sireadell/halflife" style="color: #4A4638;">GitHub ↗</a>
+    </div>
+  </div>
+
+  <!-- HERO -->
+  <div style="padding: 96px 72px 80px; display: flex; gap: 64px; align-items: center;">
+    <div style="flex: 1.1; display: flex; flex-direction: column; gap: 28px;">
+      <div style="display: inline-flex; align-self: flex-start; align-items: center; gap: 8px; background: #E8EFE9; border: 1px solid #C9DCCD; border-radius: 999px; padding: 6px 14px;">
+        <div style="width: 7px; height: 7px; border-radius: 50%; background: #3B5D42;"></div>
+        <span class="mono" style="font-size: 12px; color: #3B5D42; letter-spacing: 0.02em;">LIVE ON ARC MAINNET</span>
+      </div>
+      <h1 class="serif" style="margin: 0; font-size: 60px; line-height: 1.06; font-weight: 600; letter-spacing: -0.01em;">
+        AI agents get worse over time.<br>Most people never find out.
+      </h1>
+      <p style="margin: 0; font-size: 19px; line-height: 1.6; color: #4A4638; max-width: 520px;">
+        Halflife certifies an agent, remembers exactly how it behaved, and checks again later. If it got worse, the certificate is revoked — permanently, publicly, on the Arc blockchain, not in a database only we can edit.
+      </p>
+      <div style="display: flex; gap: 14px; align-items: center; margin-top: 8px;">
+        <a href="#certify" style="background: #1B1A17; color: #F4EFE3; padding: 15px 26px; border-radius: 6px; font-size: 15px; font-weight: 500;">Certify your agent</a>
+        <a href="#proof" style="border: 1px solid #C9BFA5; padding: 15px 26px; border-radius: 6px; font-size: 15px; color: #1B1A17;">See a real certificate →</a>
+      </div>
+      <div style="display: flex; gap: 28px; margin-top: 12px; font-size: 13px; color: #7C7462;">
+        <span>0.01 USDC per check</span>
+        <span>·</span>
+        <span>Paid over x402</span>
+        <span>·</span>
+        <span>Written to Arc, not to us</span>
+      </div>
+    </div>
+
+    <!-- CERTIFICATE PREVIEW CARD -->
+    <div style="flex: 0.9; background: #FBF8F0; border: 1px solid #DDD5C0; border-radius: 14px; padding: 28px; box-shadow: 0 24px 60px -30px rgba(27,26,23,0.25);">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;">
+        <span class="mono" style="font-size: 11px; color: #7C7462; letter-spacing: 0.06em;">CERTIFICATE</span>
+        <span class="mono" style="font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 3px; background: #E8EFE9; color: #3B5D42;">VALID</span>
+      </div>
+      <div class="serif" style="font-size: 22px; font-weight: 600; margin-bottom: 4px;">support-agent-04</div>
+      <div class="mono" style="font-size: 12px; color: #7C7462; margin-bottom: 20px;">0xb3FB…f2B53</div>
+      <div style="height: 1px; background: #DDD5C0; margin: 18px 0;"></div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; font-size: 13px;">
+        <div>
+          <div style="color: #7C7462; margin-bottom: 4px;">Verdict</div>
+          <div style="font-weight: 500;">RESILIENT · 100</div>
+        </div>
+        <div>
+          <div style="color: #7C7462; margin-bottom: 4px;">Next check</div>
+          <div style="font-weight: 500;">in 30 days</div>
+        </div>
+        <div style="grid-column: 1 / -1;">
+          <div style="color: #7C7462; margin-bottom: 4px;">Arc transaction</div>
+          <div class="mono" style="font-size: 12px;">0xe21574e8…5b866 ↗</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HOW IT WORKS -->
+  <div id="how" style="padding: 80px 72px; background: #FBF8F0; border-top: 1px solid #DDD5C0; border-bottom: 1px solid #DDD5C0;">
+    <div style="max-width: 640px; margin-bottom: 56px;">
+      <div class="mono" style="font-size: 12px; color: #7C7462; letter-spacing: 0.08em; margin-bottom: 12px;">HOW IT WORKS</div>
+      <h2 class="serif" style="margin: 0; font-size: 34px; font-weight: 600;">Three steps. Nothing hidden.</h2>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 40px;">
+      <div>
+        <div class="serif" style="font-size: 15px; color: #A39A82; margin-bottom: 14px;">01</div>
+        <div style="font-size: 18px; font-weight: 600; margin-bottom: 10px;">Point it at your agent</div>
+        <div style="font-size: 15px; line-height: 1.6; color: #4A4638;">Give Halflife your agent's API and one example request. That's the whole setup.</div>
+      </div>
+      <div>
+        <div class="serif" style="font-size: 15px; color: #A39A82; margin-bottom: 14px;">02</div>
+        <div style="font-size: 18px; font-weight: 600; margin-bottom: 10px;">It gets genuinely tested</div>
+        <div style="font-size: 15px; line-height: 1.6; color: #4A4638;">A separate service runs real adversarial checks — broken input, contradictions, pressure to guess — and scores what actually happened.</div>
+      </div>
+      <div>
+        <div class="serif" style="font-size: 15px; color: #A39A82; margin-bottom: 14px;">03</div>
+        <div style="font-size: 18px; font-weight: 600; margin-bottom: 10px;">The result goes on Arc</div>
+        <div style="font-size: 15px; line-height: 1.6; color: #4A4638;">Issued or revoked, it's written permanently to the Arc blockchain. Nobody, including us, can quietly edit it later.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CERTIFY (the real product action) -->
+  <div id="certify" style="padding: 88px 72px; display: flex; gap: 64px;">
+    <div style="flex: 1;">
+      <div class="mono" style="font-size: 12px; color: #7C7462; letter-spacing: 0.08em; margin-bottom: 12px;">TRY IT NOW</div>
+      <h2 class="serif" style="margin: 0 0 16px; font-size: 34px; font-weight: 600;">Certify an agent, right now.</h2>
+      <p style="font-size: 16px; line-height: 1.65; color: #4A4638; max-width: 440px; margin: 0 0 24px;">
+        Connect a wallet, pay 0.01 USDC on Arc, and Halflife runs a real check on the agent below. If your wallet holds Arc USDC but hasn't been used here before, Halflife moves the small amount needed into the payment system for you — one extra approval, shown clearly before it happens.
+      </p>
+      <div style="display: flex; flex-direction: column; gap: 10px; font-size: 14px; color: #4A4638;">
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <div style="width: 6px; height: 6px; border-radius: 50%; background: #3B5D42;"></div>
+          <span>Every result is written to Arc, whether it passes or fails</span>
+        </div>
+        <div style="display: flex; gap: 10px; align-items: center;">
+          <div style="width: 6px; height: 6px; border-radius: 50%; background: #3B5D42;"></div>
+          <span>A revoked certificate stays visible — it's not deleted</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="flex: 1; background: #FBF8F0; border: 1px solid #DDD5C0; border-radius: 14px; padding: 32px; display: flex; flex-direction: column; gap: 18px;">
+      <div>
+        <label style="display: block; font-size: 12px; color: #7C7462; margin-bottom: 6px; letter-spacing: 0.04em;">AGENT TO CERTIFY</label>
+        <input type="text" value="halflife-demo-agent.onrender.com" style="width: 100%; box-sizing: border-box; border: 1px solid #DDD5C0; background: #fff; border-radius: 6px; padding: 12px 14px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #1B1A17;">
+      </div>
+      <div>
+        <label style="display: block; font-size: 12px; color: #7C7462; margin-bottom: 6px; letter-spacing: 0.04em;">SAMPLE REQUEST</label>
+        <div style="border: 1px solid #DDD5C0; background: #1B1A17; border-radius: 6px; padding: 14px; font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: #E8E3D6; line-height: 1.6;">{ "message": "What is 2 plus 2?" }</div>
+      </div>
+      <div style="height: 1px; background: #DDD5C0; margin: 4px 0;"></div>
+      <div style="display: flex; align-items: center; justify-content: space-between;">
+        <div>
+          <div style="font-size: 13px; color: #7C7462;">Price</div>
+          <div style="font-size: 20px; font-weight: 600;">0.01 USDC</div>
+        </div>
+        <button style="background: #1B1A17; color: #F4EFE3; border: none; padding: 14px 24px; border-radius: 6px; font-size: 15px; font-weight: 500; cursor: pointer;">Connect wallet &amp; certify</button>
+      </div>
+      <div style="font-size: 12px; color: #A39A82; text-align: center;">Arc mainnet · settles through Circle's x402 facilitator</div>
+    </div>
+  </div>
+
+  <!-- PROOF -->
+  <div id="proof" style="padding: 88px 72px; background: #1B1A17; color: #F4EFE3;">
+    <div style="max-width: 640px; margin-bottom: 48px;">
+      <div class="mono" style="font-size: 12px; color: #A39A82; letter-spacing: 0.08em; margin-bottom: 12px;">SEE IT CATCH A REAL REGRESSION</div>
+      <h2 class="serif" style="margin: 0 0 16px; font-size: 34px; font-weight: 600;">This actually happened, on mainnet.</h2>
+      <p style="font-size: 16px; line-height: 1.65; color: #C9C3B0; margin: 0;">
+        One agent, checked twice. The second time, it started answering confidently instead of admitting it didn't know. Halflife's rule caught the fall and revoked the certificate — automatically, no one had to notice by hand.
+      </p>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px;">
+      <div style="background: #26241F; border: 1px solid #3A382F; border-radius: 12px; padding: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <span class="mono" style="font-size: 11px; color: #A39A82;">CHECK 1</span>
+          <span class="mono" style="font-size: 11px; padding: 4px 10px; border-radius: 3px; background: #2C4433; color: #8FBF9A;">ISSUED</span>
+        </div>
+        <div style="font-size: 15px; margin-bottom: 6px;">RESILIENT · score 100</div>
+        <div class="mono" style="font-size: 12px; color: #A39A82;">0xe21574e8…5b866 ↗</div>
+      </div>
+      <div style="background: #26241F; border: 1px solid #3A382F; border-radius: 12px; padding: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px;">
+          <span class="mono" style="font-size: 11px; color: #A39A82;">CHECK 2</span>
+          <span class="mono" style="font-size: 11px; padding: 4px 10px; border-radius: 3px; background: #4A2C2C; color: #D99C9C;">REVOKED</span>
+        </div>
+        <div style="font-size: 15px; margin-bottom: 6px;">PARTIAL · score 83</div>
+        <div class="mono" style="font-size: 12px; color: #A39A82;">0x9ec75646…76f95b ↗</div>
+      </div>
+    </div>
+    <div style="margin-top: 28px;">
+      <a href="#" style="color: #F4EFE3; border-bottom: 1px solid #A39A82; font-size: 14px; padding-bottom: 2px;">Verify both, independently, on Arc's own explorer ↗</a>
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div style="padding: 40px 72px; display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: #7C7462;">
+    <div>Halflife · built on Arc mainnet, chain 5042</div>
+    <div style="display: flex; gap: 24px;">
+      <a href="#" style="color: #7C7462;">Arc explorer</a>
+      <a href="#" style="color: #7C7462;">GitHub</a>
+      <a href="#" style="color: #7C7462;">How certification works</a>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
