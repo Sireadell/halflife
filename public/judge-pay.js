@@ -26698,68 +26698,34 @@ function http(url, config = {}) {
 }
 
 // node_modules/viem/_esm/index.js
-init_number();
-init_encodeFunctionData();
 init_getAddress();
-init_toBytes();
-init_toHex();
-init_keccak256();
 
-// node_modules/@x402/evm/dist/esm/chunk-K44HJJUO.mjs
-function getEvmChainId(network) {
-  if (network.startsWith("eip155:")) {
-    const idStr = network.split(":")[1];
-    const chainId = parseInt(idStr, 10);
-    if (isNaN(chainId)) {
-      throw new Error(`Invalid CAIP-2 chain ID: ${network}`);
-    }
-    return chainId;
-  }
-  throw new Error(`Unsupported network format: ${network} (expected eip155:CHAIN_ID)`);
-}
-function getCrypto() {
-  const cryptoObj = globalThis.crypto;
-  if (!cryptoObj) {
-    throw new Error("Crypto API not available");
-  }
-  return cryptoObj;
-}
-function createNonce() {
-  return toHex(getCrypto().getRandomValues(new Uint8Array(32)));
-}
-function createPermit2Nonce() {
-  const randomBytes3 = getCrypto().getRandomValues(new Uint8Array(32));
-  return BigInt(toHex(randomBytes3)).toString();
-}
-
-// node_modules/@x402/evm/dist/esm/chunk-SGFNIWGK.mjs
-var EVM_NETWORK_CHAIN_ID_MAP = {
-  ethereum: 1,
-  sepolia: 11155111,
-  abstract: 2741,
-  "abstract-testnet": 11124,
-  "base-sepolia": 84532,
-  base: 8453,
-  "avalanche-fuji": 43113,
-  avalanche: 43114,
-  iotex: 4689,
-  sei: 1329,
-  "sei-testnet": 1328,
-  polygon: 137,
-  "polygon-amoy": 80002,
-  peaq: 3338,
-  story: 1514,
-  educhain: 41923,
-  "skale-base-sepolia": 324705682,
-  megaeth: 4326,
-  monad: 143,
-  stable: 988,
-  "stable-testnet": 2201,
-  celo: 42220,
-  flare: 14
-};
-var NETWORKS = Object.keys(EVM_NETWORK_CHAIN_ID_MAP);
-var authorizationTypes = {
+// src/browser/judgePay.js
+var ARC_CHAIN_ID = 5042;
+var ARC_CAIP2 = "eip155:5042";
+var ARC_RPC_URL = "https://rpc.mainnet.arc.io";
+var ARC_EXPLORER = "https://arc.etherscan.io";
+var SAMPLE_AGENT = "https://stressproof-demo-agent.example.invalid/chat";
+var SAMPLE_AGENT_ADDRESS = "0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53";
+var ARC_GATEWAY_ADDRESS = "0x77777777dcc4d5a8b6e418fd04d8997ef11000ee";
+var ARC_USDC_ADDRESS = "0x3600000000000000000000000000000000000000";
+var ERC20_ABI = [
+  { name: "approve", type: "function", stateMutability: "nonpayable", inputs: [{ type: "address" }, { type: "uint256" }], outputs: [{ type: "bool" }] },
+  { name: "allowance", type: "function", stateMutability: "view", inputs: [{ type: "address" }, { type: "address" }], outputs: [{ type: "uint256" }] },
+  { name: "balanceOf", type: "function", stateMutability: "view", inputs: [{ type: "address" }], outputs: [{ type: "uint256" }] }
+];
+var GATEWAY_ABI = [
+  { name: "deposit", type: "function", stateMutability: "nonpayable", inputs: [{ type: "address" }, { type: "uint256" }], outputs: [] },
+  { name: "availableBalance", type: "function", stateMutability: "view", inputs: [{ type: "address" }, { type: "address" }], outputs: [{ type: "uint256" }] }
+];
+var arcMainnet = defineChain({
+  id: ARC_CHAIN_ID,
+  name: "Arc",
+  nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
+  rpcUrls: { default: { http: [ARC_RPC_URL] } },
+  blockExplorers: { default: { name: "ArcScan", url: ARC_EXPLORER } }
+});
+var AUTHORIZATION_TYPES = {
   TransferWithAuthorization: [
     { name: "from", type: "address" },
     { name: "to", type: "address" },
@@ -26769,844 +26735,48 @@ var authorizationTypes = {
     { name: "nonce", type: "bytes32" }
   ]
 };
-var permit2WitnessTypes = {
-  PermitWitnessTransferFrom: [
-    { name: "permitted", type: "TokenPermissions" },
-    { name: "spender", type: "address" },
-    { name: "nonce", type: "uint256" },
-    { name: "deadline", type: "uint256" },
-    { name: "witness", type: "Witness" }
-  ],
-  TokenPermissions: [
-    { name: "token", type: "address" },
-    { name: "amount", type: "uint256" }
-  ],
-  Witness: [
-    { name: "to", type: "address" },
-    { name: "validAfter", type: "uint256" }
-  ]
+var randomNonce = () => {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return `0x${Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("")}`;
 };
-var eip2612PermitTypes = {
-  Permit: [
-    { name: "owner", type: "address" },
-    { name: "spender", type: "address" },
-    { name: "value", type: "uint256" },
-    { name: "nonce", type: "uint256" },
-    { name: "deadline", type: "uint256" }
-  ]
-};
-var eip2612NoncesAbi = [
-  {
-    type: "function",
-    name: "nonces",
-    inputs: [{ name: "owner", type: "address" }],
-    outputs: [{ type: "uint256" }],
-    stateMutability: "view"
-  }
-];
-var erc20ApproveAbi = [
-  {
-    type: "function",
-    name: "approve",
-    inputs: [
-      { name: "spender", type: "address" },
-      { name: "amount", type: "uint256" }
-    ],
-    outputs: [{ type: "bool" }],
-    stateMutability: "nonpayable"
-  }
-];
-var erc20AllowanceAbi = [
-  {
-    type: "function",
-    name: "allowance",
-    inputs: [
-      { name: "owner", type: "address" },
-      { name: "spender", type: "address" }
-    ],
-    outputs: [{ type: "uint256" }],
-    stateMutability: "view"
-  }
-];
-var ERC20_APPROVE_GAS_LIMIT = 70000n;
-var DEFAULT_MAX_FEE_PER_GAS = 1000000000n;
-var DEFAULT_MAX_PRIORITY_FEE_PER_GAS = 100000000n;
-var PERMIT2_ADDRESS = "0x000000000022D473030F116dDEE9F6B43aC78BA3";
-var x402ExactPermit2ProxyAddress = "0x402085c248EeA27D92E8b30b2C58ed07f9E20001";
-
-// node_modules/@x402/evm/dist/esm/chunk-2UXXNYPA.mjs
-var DEFAULT_ASSETS = {
-  "eip155:8453": [
-    {
-      asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-      name: "USD Coin",
-      version: "2",
-      decimals: 6,
-      symbol: "USDC"
-    }
-  ],
-  // Base mainnet USDC
-  "eip155:84532": [
-    {
-      asset: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
-      name: "USDC",
-      version: "2",
-      decimals: 6,
-      symbol: "USDC"
-    }
-  ],
-  // Base Sepolia USDC
-  "eip155:1": [
-    {
-      asset: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
-      name: "USD Coin",
-      version: "2",
-      decimals: 6,
-      symbol: "USDC"
-    }
-  ],
-  // Ethereum mainnet USDC
-  "eip155:43114": [
-    {
-      asset: "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E",
-      name: "USD Coin",
-      version: "2",
-      decimals: 6,
-      symbol: "USDC"
-    }
-  ],
-  // Avalanche C-Chain USDC
-  "eip155:4326": [
-    {
-      asset: "0xFAfDdbb3FC7688494971a79cc65DCa3EF82079E7",
-      name: "MegaUSD",
-      version: "1",
-      decimals: 18,
-      symbol: "MegaUSD",
-      assetTransferMethod: "permit2",
-      supportsEip2612: true
-    }
-  ],
-  // MegaETH mainnet MegaUSD (no EIP-3009, supports EIP-2612)
-  "eip155:143": [
-    {
-      asset: "0x754704Bc059F8C67012fEd69BC8A327a5aafb603",
-      name: "USDC",
-      version: "2",
-      decimals: 6,
-      symbol: "USDC"
-    }
-  ],
-  // Monad mainnet USDC
-  "eip155:988": [
-    {
-      asset: "0x779Ded0c9e1022225f8E0630b35a9b54bE713736",
-      name: "USDT0",
-      version: "1",
-      decimals: 6,
-      symbol: "USDT0"
-    }
-  ],
-  // Stable mainnet USDT0
-  "eip155:2201": [
-    {
-      asset: "0x78Cf24370174180738C5B8E352B6D14c83a6c9A9",
-      name: "USDT0",
-      version: "1",
-      decimals: 6,
-      symbol: "USDT0"
-    }
-  ],
-  // Stable testnet USDT0
-  "eip155:137": [
-    {
-      asset: "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359",
-      name: "USD Coin",
-      version: "2",
-      decimals: 6,
-      symbol: "USDC"
-    }
-  ],
-  // Polygon mainnet USDC
-  "eip155:42161": [
-    {
-      asset: "0xaf88d065e77c8cC2239327C5EDb3A432268e5831",
-      name: "USD Coin",
-      version: "2",
-      decimals: 6,
-      symbol: "USDC"
-    }
-  ],
-  // Arbitrum One USDC
-  "eip155:421614": [
-    {
-      asset: "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
-      name: "USD Coin",
-      version: "2",
-      decimals: 6,
-      symbol: "USDC"
-    }
-  ],
-  // Arbitrum Sepolia USDC
-  "eip155:31612": [
-    {
-      asset: "0xdD468A1DDc392dcdbEf6db6e34E89AA338F9F186",
-      name: "Mezo USD",
-      version: "1",
-      decimals: 18,
-      symbol: "mUSD",
-      assetTransferMethod: "permit2",
-      supportsEip2612: true
-    }
-  ],
-  // Mezo mainnet mUSD (no EIP-3009, supports EIP-2612)
-  "eip155:31611": [
-    {
-      asset: "0x118917a40FAF1CD7a13dB0Ef56C86De7973Ac503",
-      name: "Mezo USD",
-      version: "1",
-      decimals: 18,
-      symbol: "mUSD",
-      assetTransferMethod: "permit2",
-      supportsEip2612: true
-    }
-  ],
-  // Mezo Testnet mUSD (no EIP-3009, supports EIP-2612)
-  "eip155:723487": [
-    {
-      asset: "0x33ad9e4BD16B69B5BFdED37D8B5D9fF9aba014Fb",
-      name: "Stable Coin",
-      version: "1",
-      decimals: 6,
-      symbol: "SBC",
-      assetTransferMethod: "permit2",
-      supportsEip2612: true
-    }
-  ],
-  // Radius Network SBC (no EIP-3009, supports EIP-2612)
-  "eip155:72344": [
-    {
-      asset: "0x33ad9e4BD16B69B5BFdED37D8B5D9fF9aba014Fb",
-      name: "Stable Coin",
-      version: "1",
-      decimals: 6,
-      symbol: "SBC",
-      assetTransferMethod: "permit2",
-      supportsEip2612: true
-    }
-  ],
-  // Radius Testnet SBC (no EIP-3009, supports EIP-2612)
-  "eip155:36900": [
-    {
-      asset: "0x9cb8142aEBBcdc60AF7c97Af897A67A8f3CA71C2",
-      name: "USDC.e",
-      version: "2",
-      decimals: 6,
-      symbol: "USDC.e"
-    }
-  ],
-  // ADI Chain USDC.e (EIP-3009 supported)
-  "eip155:190415": [
-    {
-      asset: "0x401eCb1D350407f13ba348573E5630B83638E30D",
-      name: "Bridged USDC",
-      version: "2",
-      decimals: 6,
-      symbol: "USDC.e"
-    }
-  ],
-  // HPP mainnet USDC.e
-  "eip155:181228": [
-    {
-      asset: "0x401eCb1D350407f13ba348573E5630B83638E30D",
-      name: "Bridged USDC",
-      version: "2",
-      decimals: 6,
-      symbol: "USDC.e"
-    }
-  ],
-  // HPP Sepolia USDC.e
-  "eip155:50": [
-    {
-      asset: "0xfA2958CB79b0491CC627c1557F441eF849Ca8eb1",
-      name: "USDC",
-      version: "2",
-      decimals: 6,
-      symbol: "USDC"
-    }
-  ],
-  // XDC Network mainnet USDC (Bridged USDC Standard, EIP-3009 supported)
-  "eip155:51": [
-    {
-      asset: "0xb5AB69F7bBada22B28e79C8FFAECe55eF1c771D4",
-      name: "USDC",
-      version: "2",
-      decimals: 6,
-      symbol: "USDC"
-    }
-  ],
-  // XDC Apothem testnet USDC (Bridged USDC Standard, EIP-3009 supported)
-  "eip155:38833": [
-    {
-      asset: "0xA5b8BF902b2844dA17d4506cc827F7F1681735E7",
-      name: "USDC",
-      version: "1",
-      decimals: 6,
-      symbol: "USDC",
-      assetTransferMethod: "permit2"
-    }
-  ],
-  // Igra mainnet USDC (no EIP-3009, no EIP-2612)
-  "eip155:14": [
-    {
-      asset: "0xe7cd86e13AC4309349F30B3435a9d337750fC82D",
-      name: "USD\u20AE0",
-      version: "1",
-      decimals: 6,
-      symbol: "USDT0"
-    }
-  ],
-  // Flare mainnet USD₮0 (EIP-3009 supported)
-  "eip155:42220": [
-    {
-      asset: "0xcebA9300f2b948710d2653dD7B07f33A8B32118C",
-      name: "USDC",
-      version: "2",
-      decimals: 6,
-      symbol: "USDC"
-    },
-    {
-      asset: "0x48065fbBE25f71C9282ddf5e1cD6D6A887483D5e",
-      name: "Tether USD",
-      version: "1",
-      decimals: 6,
-      symbol: "USDT"
-    },
-    {
-      asset: "0xD2ab3C9A02DBBAB236BfEC45D1d755DF4267F771",
-      name: "Tether America USD",
-      version: "1",
-      decimals: 6,
-      symbol: "USAT"
-    }
-  ],
-  // Celo mainnet USDC, USDT, USAT (EIP-3009 supported)
-  "eip155:11142220": [
-    {
-      asset: "0x01C5C0122039549AD1493B8220cABEdD739BC44E",
-      name: "USDC",
-      version: "2",
-      decimals: 6,
-      symbol: "USDC"
-    }
-  ],
-  // Celo Sepolia testnet USDC (EIP-3009 supported)
-  "eip155:1329": [
-    {
-      asset: "0xe15fC38F6D8c56aF07bbCBe3BAf5708A2Bf42392",
-      name: "USDC",
-      version: "2",
-      decimals: 6,
-      symbol: "USDC"
-    }
-  ],
-  // Sei mainnet USDC (EIP-3009 supported)
-  "eip155:1328": [
-    {
-      asset: "0x4fCF1784B31630811181f670Aea7A7bEF803eaED",
-      name: "USDC",
-      version: "2",
-      decimals: 6,
-      symbol: "USDC"
-    }
-  ]
-  // Sei testnet USDC (EIP-3009 supported)
-};
-function resolveNetworkKey(network) {
-  if (network in DEFAULT_ASSETS) {
-    return network;
-  }
-  const chainId = EVM_NETWORK_CHAIN_ID_MAP[network];
-  if (chainId !== void 0) {
-    return `eip155:${chainId}`;
-  }
-  return network;
-}
-var findDefaultAsset = (asset, network) => {
-  const key = resolveNetworkKey(network);
-  const assets = DEFAULT_ASSETS[key];
-  if (!assets) {
-    return void 0;
-  }
-  const normalized = asset.toLowerCase();
-  return assets.find((entry) => entry.asset.toLowerCase() === normalized);
-};
-
-// node_modules/@x402/evm/dist/esm/chunk-7JHAAJUW.mjs
-var SALT_BINDING_TYPEHASH = keccak256(
-  toBytes(
-    "x402AuthCaptureSaltBinding(address receiverAuthorizer,address policy,uint256 saltNonce)"
-  )
-);
-var PAYMENT_INFO_TYPEHASH = keccak256(
-  new TextEncoder().encode(
-    "PaymentInfo(address operator,address payer,address receiver,address token,uint120 maxAmount,uint48 preApprovalExpiry,uint48 authorizationExpiry,uint48 refundExpiry,uint16 minFeeBps,uint16 maxFeeBps,address feeReceiver,uint256 salt)"
-  )
-);
-
-// node_modules/@x402/evm/dist/esm/chunk-PVG5HIE2.mjs
-var CHANNEL_CONFIG_TYPEHASH = keccak256(
-  toBytes(
-    "ChannelConfig(address payer,address payerAuthorizer,address receiver,address receiverAuthorizer,address token,uint40 withdrawDelay,bytes32 salt)"
-  )
-);
-
-// node_modules/@x402/evm/dist/esm/chunk-KEX4SYHV.mjs
-var EIP2612_GAS_SPONSORING_KEY = "eip2612GasSponsoring";
-var ERC20_APPROVAL_GAS_SPONSORING_KEY = "erc20ApprovalGasSponsoring";
-var ERC20_APPROVAL_GAS_SPONSORING_VERSION = "1";
-async function signEip2612Permit(signer, tokenAddress, tokenName, tokenVersion, chainId, deadline, permittedAmount) {
-  const owner = signer.address;
-  const spender = getAddress(PERMIT2_ADDRESS);
-  const nonce = await signer.readContract({
-    address: tokenAddress,
-    abi: eip2612NoncesAbi,
-    functionName: "nonces",
-    args: [owner]
-  });
-  const domain = {
-    name: tokenName,
-    version: tokenVersion,
-    chainId,
-    verifyingContract: tokenAddress
-  };
-  const approvalAmount = BigInt(permittedAmount);
-  const message = {
-    owner,
-    spender,
-    value: approvalAmount,
-    nonce,
-    deadline: BigInt(deadline)
-  };
-  const signature = await signer.signTypedData({
-    domain,
-    types: eip2612PermitTypes,
-    primaryType: "Permit",
-    message
-  });
-  return {
-    from: owner,
-    asset: tokenAddress,
-    spender,
-    amount: approvalAmount.toString(),
-    nonce: nonce.toString(),
-    deadline,
-    signature,
-    version: "1"
-  };
-}
-async function signErc20ApprovalTransaction(signer, tokenAddress, chainId) {
-  const from16 = signer.address;
-  const spender = getAddress(PERMIT2_ADDRESS);
-  const data = encodeFunctionData({
-    abi: erc20ApproveAbi,
-    functionName: "approve",
-    args: [spender, maxUint256]
-  });
-  const nonce = await signer.getTransactionCount({ address: from16 });
-  let maxFeePerGas;
-  let maxPriorityFeePerGas;
-  try {
-    const fees = await signer.estimateFeesPerGas?.();
-    if (!fees) {
-      throw new Error("no fee estimates available");
-    }
-    maxFeePerGas = fees.maxFeePerGas;
-    maxPriorityFeePerGas = fees.maxPriorityFeePerGas;
-  } catch {
-    maxFeePerGas = DEFAULT_MAX_FEE_PER_GAS;
-    maxPriorityFeePerGas = DEFAULT_MAX_PRIORITY_FEE_PER_GAS;
-  }
-  const signedTransaction = await signer.signTransaction({
-    to: tokenAddress,
-    data,
-    nonce,
-    gas: ERC20_APPROVE_GAS_LIMIT,
-    maxFeePerGas,
-    maxPriorityFeePerGas,
-    chainId
-  });
-  return {
-    from: from16,
-    asset: tokenAddress,
-    spender,
-    amount: maxUint256.toString(),
-    signedTransaction,
-    version: ERC20_APPROVAL_GAS_SPONSORING_VERSION
-  };
-}
-var rpcClientCache = /* @__PURE__ */ new Map();
-function isConfigByChainId(options) {
-  const keys = Object.keys(options);
-  return keys.length > 0 && keys.every((key) => /^\d+$/.test(key));
-}
-function getRpcClient(rpcUrl) {
-  const existing = rpcClientCache.get(rpcUrl);
-  if (existing) {
-    return existing;
-  }
-  const client = createPublicClient({
-    transport: http(rpcUrl)
-  });
-  rpcClientCache.set(rpcUrl, client);
-  return client;
-}
-function resolveRpcUrl(network, options) {
-  if (!options) {
-    return void 0;
-  }
-  if (isConfigByChainId(options)) {
-    const chainId = getEvmChainId(network);
-    const optionsByChainId = options;
-    return optionsByChainId[chainId]?.rpcUrl;
-  }
-  return options.rpcUrl;
-}
-function resolveExtensionRpcCapabilities(network, signer, options) {
-  const capabilities = {
-    signTransaction: signer.signTransaction,
-    readContract: signer.readContract,
-    getTransactionCount: signer.getTransactionCount,
-    estimateFeesPerGas: signer.estimateFeesPerGas
-  };
-  const needsRpcBackfill = !capabilities.readContract || !capabilities.getTransactionCount || !capabilities.estimateFeesPerGas;
-  if (!needsRpcBackfill) {
-    return capabilities;
-  }
-  const rpcUrl = resolveRpcUrl(network, options);
-  if (!rpcUrl) {
-    return capabilities;
-  }
-  const rpcClient = getRpcClient(rpcUrl);
-  if (!capabilities.readContract) {
-    capabilities.readContract = (args) => rpcClient.readContract(args);
-  }
-  if (!capabilities.getTransactionCount) {
-    capabilities.getTransactionCount = async (args) => rpcClient.getTransactionCount({ address: args.address });
-  }
-  if (!capabilities.estimateFeesPerGas) {
-    capabilities.estimateFeesPerGas = async () => rpcClient.estimateFeesPerGas();
-  }
-  return capabilities;
-}
-async function trySignEip2612PermitExtension(signer, options, requirements, result, context, approvalAmount) {
-  const capabilities = resolveExtensionRpcCapabilities(requirements.network, signer, options);
-  if (!capabilities.readContract) {
-    return void 0;
-  }
-  if (!context?.extensions?.[EIP2612_GAS_SPONSORING_KEY]) {
-    return void 0;
-  }
-  const tokenName = requirements.extra?.name;
-  const tokenVersion = requirements.extra?.version;
-  if (!tokenName || !tokenVersion) {
-    return void 0;
-  }
-  const chainId = getEvmChainId(requirements.network);
-  const tokenAddress = getAddress(requirements.asset);
-  const requiredAllowance = approvalAmount ?? requirements.amount;
-  try {
-    const allowance = await capabilities.readContract({
-      address: tokenAddress,
-      abi: erc20AllowanceAbi,
-      functionName: "allowance",
-      args: [signer.address, PERMIT2_ADDRESS]
-    });
-    if (allowance >= BigInt(requiredAllowance)) {
-      return void 0;
-    }
-  } catch {
-  }
-  const permit2Auth = result.payload?.permit2Authorization;
-  const deadline = permit2Auth?.deadline ?? Math.floor(Date.now() / 1e3 + requirements.maxTimeoutSeconds).toString();
-  const info = await signEip2612Permit(
-    {
-      address: signer.address,
-      signTypedData: (msg) => signer.signTypedData(msg),
-      readContract: capabilities.readContract
-    },
-    tokenAddress,
-    tokenName,
-    tokenVersion,
-    chainId,
-    deadline,
-    requiredAllowance
-  );
-  return {
-    [EIP2612_GAS_SPONSORING_KEY]: { info }
-  };
-}
-async function trySignErc20ApprovalExtension(signer, options, requirements, context, approvalAmount) {
-  const capabilities = resolveExtensionRpcCapabilities(requirements.network, signer, options);
-  if (!capabilities.readContract) {
-    return void 0;
-  }
-  if (!context?.extensions?.[ERC20_APPROVAL_GAS_SPONSORING_KEY]) {
-    return void 0;
-  }
-  if (!capabilities.signTransaction || !capabilities.getTransactionCount) {
-    return void 0;
-  }
-  const chainId = getEvmChainId(requirements.network);
-  const tokenAddress = getAddress(requirements.asset);
-  const requiredAllowance = approvalAmount ?? requirements.amount;
-  try {
-    const allowance = await capabilities.readContract({
-      address: tokenAddress,
-      abi: erc20AllowanceAbi,
-      functionName: "allowance",
-      args: [signer.address, PERMIT2_ADDRESS]
-    });
-    if (allowance >= BigInt(requiredAllowance)) {
-      return void 0;
-    }
-  } catch {
-  }
-  const info = await signErc20ApprovalTransaction(
-    {
-      address: signer.address,
-      signTransaction: capabilities.signTransaction,
-      getTransactionCount: capabilities.getTransactionCount,
-      estimateFeesPerGas: capabilities.estimateFeesPerGas
-    },
-    tokenAddress,
-    chainId
-  );
-  return {
-    [ERC20_APPROVAL_GAS_SPONSORING_KEY]: { info }
-  };
-}
-
-// node_modules/@x402/evm/dist/esm/chunk-MVR3E4WJ.mjs
-async function createPermit2PayloadForProxy(proxyAddress, signer, x402Version2, paymentRequirements) {
-  const now = Math.floor(Date.now() / 1e3);
-  const nonce = createPermit2Nonce();
-  const validAfter = "0";
-  const deadline = (now + paymentRequirements.maxTimeoutSeconds).toString();
-  const permit2Authorization = {
-    from: signer.address,
-    permitted: {
-      token: getAddress(paymentRequirements.asset),
-      amount: paymentRequirements.amount
-    },
-    spender: proxyAddress,
-    nonce,
-    deadline,
-    witness: {
-      to: getAddress(paymentRequirements.payTo),
-      validAfter
-    }
-  };
-  const signature = await signPermit2Authorization(
-    signer,
-    permit2Authorization,
-    paymentRequirements
-  );
-  return {
-    x402Version: x402Version2,
-    payload: { signature, permit2Authorization }
-  };
-}
-async function signPermit2Authorization(signer, permit2Authorization, requirements) {
-  const chainId = getEvmChainId(requirements.network);
-  return await signer.signTypedData({
-    domain: { name: "Permit2", chainId, verifyingContract: PERMIT2_ADDRESS },
-    types: permit2WitnessTypes,
-    primaryType: "PermitWitnessTransferFrom",
-    message: {
-      permitted: {
-        token: getAddress(permit2Authorization.permitted.token),
-        amount: BigInt(permit2Authorization.permitted.amount)
-      },
-      spender: getAddress(permit2Authorization.spender),
-      nonce: BigInt(permit2Authorization.nonce),
-      deadline: BigInt(permit2Authorization.deadline),
-      witness: {
-        to: getAddress(permit2Authorization.witness.to),
-        validAfter: BigInt(permit2Authorization.witness.validAfter)
-      }
-    }
-  });
-}
-
-// node_modules/@x402/evm/dist/esm/chunk-ADSCSHQX.mjs
-var MAX_UINT256 = BigInt("0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-async function createPermit2Payload(signer, x402Version2, paymentRequirements) {
-  return createPermit2PayloadForProxy(
-    x402ExactPermit2ProxyAddress,
-    signer,
-    x402Version2,
-    paymentRequirements
-  );
-}
-
-// node_modules/@x402/evm/dist/esm/chunk-6RBEXVZ5.mjs
-async function createEIP3009Payload(signer, x402Version2, paymentRequirements) {
-  const nonce = createNonce();
-  const now = Math.floor(Date.now() / 1e3);
-  const authorization = {
-    from: signer.address,
-    to: getAddress(paymentRequirements.payTo),
-    value: paymentRequirements.amount,
-    validAfter: "0",
-    validBefore: (now + paymentRequirements.maxTimeoutSeconds).toString(),
-    nonce
-  };
-  const signature = await signEIP3009Authorization(signer, authorization, paymentRequirements);
-  const payload = {
-    authorization,
-    signature
-  };
-  return {
-    x402Version: x402Version2,
-    payload
-  };
-}
-async function signEIP3009Authorization(signer, authorization, requirements) {
-  const chainId = getEvmChainId(requirements.network);
-  if (!requirements.extra?.name || !requirements.extra?.version) {
-    throw new Error(
-      `EIP-712 domain parameters (name, version) are required in payment requirements for asset ${requirements.asset}`
-    );
-  }
-  const { name, version: version4 } = requirements.extra;
-  const domain = {
-    name,
-    version: version4,
-    chainId,
-    verifyingContract: getAddress(requirements.asset)
-  };
-  const message = {
-    from: getAddress(authorization.from),
-    to: getAddress(authorization.to),
-    value: BigInt(authorization.value),
-    validAfter: BigInt(authorization.validAfter),
-    validBefore: BigInt(authorization.validBefore),
-    nonce: authorization.nonce
-  };
-  return await signer.signTypedData({
-    domain,
-    types: authorizationTypes,
-    primaryType: "TransferWithAuthorization",
-    message
-  });
-}
-var ExactEvmScheme = class {
-  /**
-   * Creates a new ExactEvmClient instance.
-   *
-   * @param signer - The EVM signer for client operations.
-   *   Base flow only requires `address` + `signTypedData`.
-   *   Extension enrichment (EIP-2612 / ERC-20 approval sponsoring) additionally
-   *   requires optional capabilities like `readContract` and tx signing helpers.
-   * @param options - Optional RPC configuration used to backfill extension capabilities.
-   */
-  constructor(signer, options) {
-    this.signer = signer;
-    this.options = options;
+var GatewayExactScheme = class {
+  constructor(address, walletClient) {
     this.scheme = "exact";
-    this.findDefaultAsset = findDefaultAsset;
+    this.address = address;
+    this.walletClient = walletClient;
   }
-  /**
-   * Creates a payment payload for the Exact scheme.
-   * Routes to EIP-3009 or Permit2 based on requirements.extra.assetTransferMethod.
-   *
-   * For Permit2 flows, if the server advertises `eip2612GasSponsoring` and the
-   * signer supports `readContract`, automatically signs an EIP-2612 permit
-   * when Permit2 allowance is insufficient.
-   *
-   * @param x402Version - The x402 protocol version
-   * @param paymentRequirements - The payment requirements
-   * @param context - Optional context with server-declared extensions
-   * @returns Promise resolving to a payment payload result (with optional extensions)
-   */
-  async createPaymentPayload(x402Version2, paymentRequirements, context) {
-    const assetTransferMethod = paymentRequirements.extra?.assetTransferMethod ?? "eip3009";
-    if (assetTransferMethod === "permit2") {
-      const result = await createPermit2Payload(this.signer, x402Version2, paymentRequirements);
-      const eip2612Extensions = await trySignEip2612PermitExtension(
-        this.signer,
-        this.options,
-        paymentRequirements,
-        result,
-        context
-      );
-      if (eip2612Extensions) {
-        return {
-          ...result,
-          extensions: eip2612Extensions
-        };
+  async createPaymentPayload(x402Version2, requirements) {
+    const now = Math.floor(Date.now() / 1e3);
+    const authorization = {
+      from: this.address,
+      to: getAddress(requirements.payTo),
+      value: requirements.amount,
+      validAfter: "0",
+      validBefore: (now + requirements.maxTimeoutSeconds).toString(),
+      nonce: randomNonce()
+    };
+    const signature = await this.walletClient.signTypedData({
+      account: this.address,
+      domain: {
+        name: requirements.extra.name,
+        version: requirements.extra.version,
+        chainId: ARC_CHAIN_ID,
+        verifyingContract: getAddress(requirements.extra.verifyingContract ?? requirements.asset)
+      },
+      types: AUTHORIZATION_TYPES,
+      primaryType: "TransferWithAuthorization",
+      message: {
+        from: getAddress(authorization.from),
+        to: getAddress(authorization.to),
+        value: BigInt(authorization.value),
+        validAfter: BigInt(authorization.validAfter),
+        validBefore: BigInt(authorization.validBefore),
+        nonce: authorization.nonce
       }
-      const erc20Extensions = await trySignErc20ApprovalExtension(
-        this.signer,
-        this.options,
-        paymentRequirements,
-        context
-      );
-      if (erc20Extensions) {
-        return {
-          ...result,
-          extensions: erc20Extensions
-        };
-      }
-      return result;
-    }
-    return createEIP3009Payload(this.signer, x402Version2, paymentRequirements);
+    });
+    return { x402Version: x402Version2, payload: { authorization, signature } };
   }
 };
-
-// node_modules/@x402/evm/dist/esm/chunk-BPTXPSEK.mjs
-var DEFAULT_ASSET_CONTRACT_CACHE_TTL_MS = 15 * 60 * 1e3;
-
-// node_modules/@x402/evm/dist/esm/index.mjs
-function toClientEvmSigner(signer, publicClient) {
-  const readContract2 = signer.readContract ?? publicClient?.readContract.bind(publicClient);
-  const result = {
-    address: signer.address,
-    signTypedData: (msg) => signer.signTypedData(msg)
-  };
-  if (readContract2) {
-    result.readContract = readContract2;
-  }
-  const signTransaction2 = signer.signTransaction;
-  if (signTransaction2) {
-    result.signTransaction = (args) => signTransaction2(args);
-  }
-  const getTransactionCount2 = signer.getTransactionCount ?? publicClient?.getTransactionCount?.bind(publicClient);
-  if (getTransactionCount2) {
-    result.getTransactionCount = (args) => getTransactionCount2(args);
-  }
-  const estimateFeesPerGas2 = signer.estimateFeesPerGas ?? publicClient?.estimateFeesPerGas?.bind(publicClient);
-  if (estimateFeesPerGas2) {
-    result.estimateFeesPerGas = () => estimateFeesPerGas2();
-  }
-  return result;
-}
-
-// src/browser/judgePay.js
-var ARC_CHAIN_ID = 5042;
-var ARC_CAIP2 = "eip155:5042";
-var ARC_RPC_URL = "https://rpc.mainnet.arc.io";
-var ARC_EXPLORER = "https://arc.etherscan.io";
-var SAMPLE_AGENT = "https://stressproof-demo-agent.example.invalid/chat";
-var SAMPLE_AGENT_ADDRESS = "0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53";
-var arcMainnet = defineChain({
-  id: ARC_CHAIN_ID,
-  name: "Arc",
-  nativeCurrency: { name: "USDC", symbol: "USDC", decimals: 18 },
-  rpcUrls: { default: { http: [ARC_RPC_URL] } },
-  blockExplorers: { default: { name: "ArcScan", url: ARC_EXPLORER } }
-});
 var byId = (id) => document.getElementById(id);
 var esc = (value) => String(value ?? "").replace(/[&<>"']/g, (char) => ({
   "&": "&amp;",
@@ -27649,8 +26819,58 @@ var samplePayload = () => {
 };
 var walletAddress = null;
 var paidFetch = null;
+var walletClientRef = null;
+var arcPublicClient = createPublicClient({ chain: arcMainnet, transport: http(ARC_RPC_URL) });
 function showWallet(state, title, body) {
   setResult("wallet-status", title, body, state);
+}
+async function ensureGatewayBalance(walletClient, address, requiredAtomicAmount) {
+  const available = await arcPublicClient.readContract({
+    address: ARC_GATEWAY_ADDRESS,
+    abi: GATEWAY_ABI,
+    functionName: "availableBalance",
+    args: [ARC_USDC_ADDRESS, address]
+  });
+  if (available >= requiredAtomicAmount) {
+    return { deposited: false };
+  }
+  const shortfall = requiredAtomicAmount - available;
+  const walletBalance = await arcPublicClient.readContract({
+    address: ARC_USDC_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: "balanceOf",
+    args: [address]
+  });
+  if (walletBalance < shortfall) {
+    throw new Error(
+      `Wallet does not hold enough Arc USDC. Needs ${shortfall} more atomic units in Circle's Gateway, wallet only holds ${walletBalance}.`
+    );
+  }
+  showWallet("warn", "Depositing into Circle Gateway", "Circle settles this payment from a balance held in its Gateway contract, not your wallet directly. Approve the deposit in your wallet.");
+  const allowance = await arcPublicClient.readContract({
+    address: ARC_USDC_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: "allowance",
+    args: [address, ARC_GATEWAY_ADDRESS]
+  });
+  if (allowance < shortfall) {
+    const approveHash = await walletClient.writeContract({
+      address: ARC_USDC_ADDRESS,
+      abi: ERC20_ABI,
+      functionName: "approve",
+      args: [ARC_GATEWAY_ADDRESS, shortfall]
+    });
+    await arcPublicClient.waitForTransactionReceipt({ hash: approveHash });
+  }
+  showWallet("warn", "Depositing into Circle Gateway", "Approval confirmed. Approve the deposit itself in your wallet.");
+  const depositHash = await walletClient.writeContract({
+    address: ARC_GATEWAY_ADDRESS,
+    abi: GATEWAY_ABI,
+    functionName: "deposit",
+    args: [ARC_USDC_ADDRESS, shortfall]
+  });
+  await arcPublicClient.waitForTransactionReceipt({ hash: depositHash });
+  return { deposited: true, depositHash };
 }
 async function readJson(response) {
   const text = await response.text();
@@ -27693,12 +26913,9 @@ async function connectWallet() {
     chain: arcMainnet,
     transport: custom2(window.ethereum)
   });
-  const publicClient = createPublicClient({ chain: arcMainnet, transport: http(ARC_RPC_URL) });
-  const signer = toClientEvmSigner({
-    address,
-    signTypedData: (message) => walletClient.signTypedData({ account: address, ...message })
-  }, publicClient);
-  const client = new x402Client().register(ARC_CAIP2, new ExactEvmScheme(signer));
+  walletClientRef = walletClient;
+  const client = new x402Client().register(ARC_CAIP2, new GatewayExactScheme(address, walletClient));
+  client.setSpendControls({ allowedAssets: true });
   paidFetch = wrapFetchWithPayment(window.fetch.bind(window), client);
   byId("connected-wallet").textContent = shortHash(address);
   setPill("wallet-pill", "ok", "Connected");
@@ -27846,6 +27063,16 @@ async function payAndRun() {
     if (!paidFetch) await connectWallet();
     if (!paidFetch) return;
     const payload = samplePayload();
+    const aboutResponse = await fetch("/about", { headers: { accept: "application/json" } });
+    const about = await readJson(aboutResponse);
+    const priceUsdc = about.arcPaidDemo?.payment?.price?.amount ?? "0.10";
+    const requiredAtomicAmount = parseUnits(priceUsdc, 6);
+    setResult("paid-summary", "Checking Gateway balance", "Making sure enough Arc USDC is deposited with Circle before paying.");
+    out.textContent = "Checking Circle Gateway balance...";
+    const gatewayResult = await ensureGatewayBalance(walletClientRef, walletAddress, requiredAtomicAmount);
+    if (gatewayResult.deposited) {
+      out.textContent = `Deposited into Circle Gateway: ${gatewayResult.depositHash}`;
+    }
     setResult("paid-summary", "Waiting for wallet", "Approve the x402 payment in your wallet. The app will run after payment.");
     out.textContent = "Waiting for wallet payment...";
     const response = await paidFetch("/demo/certify/paid", {

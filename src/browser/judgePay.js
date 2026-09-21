@@ -1,6 +1,5 @@
 import { wrapFetchWithPayment, x402Client } from '@x402/fetch';
-import { ExactEvmScheme, toClientEvmSigner } from '@x402/evm';
-import { createPublicClient, createWalletClient, custom, defineChain, http } from 'viem';
+import { createWalletClient, createPublicClient, custom, defineChain, getAddress, http, parseUnits } from 'viem';
 
 const ARC_CHAIN_ID = 5042;
 const ARC_CAIP2 = 'eip155:5042';
@@ -9,6 +8,24 @@ const ARC_EXPLORER = 'https://arc.etherscan.io';
 const SAMPLE_AGENT = 'https://stressproof-demo-agent.example.invalid/chat';
 const SAMPLE_AGENT_ADDRESS = '0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53';
 
+// Circle settles this route's x402 payment from a balance the payer has already
+// moved into its Gateway contract, not straight from the wallet's own USDC.
+// Confirmed live 2026-09-20: a wallet holding plenty of USDC still gets
+// "insufficient_balance" from Circle's facilitator if none of it has been
+// deposited here first. So before paying, this checks the Gateway balance and,
+// if it's short, asks the wallet to approve and deposit the shortfall.
+const ARC_GATEWAY_ADDRESS = '0x77777777dcc4d5a8b6e418fd04d8997ef11000ee';
+const ARC_USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
+const ERC20_ABI = [
+  { name: 'approve', type: 'function', stateMutability: 'nonpayable', inputs: [{ type: 'address' }, { type: 'uint256' }], outputs: [{ type: 'bool' }] },
+  { name: 'allowance', type: 'function', stateMutability: 'view', inputs: [{ type: 'address' }, { type: 'address' }], outputs: [{ type: 'uint256' }] },
+  { name: 'balanceOf', type: 'function', stateMutability: 'view', inputs: [{ type: 'address' }], outputs: [{ type: 'uint256' }] },
+];
+const GATEWAY_ABI = [
+  { name: 'deposit', type: 'function', stateMutability: 'nonpayable', inputs: [{ type: 'address' }, { type: 'uint256' }], outputs: [] },
+  { name: 'availableBalance', type: 'function', stateMutability: 'view', inputs: [{ type: 'address' }, { type: 'address' }], outputs: [{ type: 'uint256' }] },
+];
+
 const arcMainnet = defineChain({
   id: ARC_CHAIN_ID,
   name: 'Arc',
@@ -16,6 +33,70 @@ const arcMainnet = defineChain({
   rpcUrls: { default: { http: [ARC_RPC_URL] } },
   blockExplorers: { default: { name: 'ArcScan', url: ARC_EXPLORER } },
 });
+
+// @x402/evm's own ExactEvmScheme signs the EIP-3009 authorization against the
+// asset address. Circle's Arc facilitator publishes a different verifyingContract
+// (its GatewayWalletBatched) in `extra` and rejects anything signed against the
+// token instead, so the domain is built from `extra` here. Verified against the
+// live facilitator on 2026-09-20: the stock scheme fails with "invalid_signature",
+// this one gets through to settlement.
+const AUTHORIZATION_TYPES = {
+  TransferWithAuthorization: [
+    { name: 'from', type: 'address' },
+    { name: 'to', type: 'address' },
+    { name: 'value', type: 'uint256' },
+    { name: 'validAfter', type: 'uint256' },
+    { name: 'validBefore', type: 'uint256' },
+    { name: 'nonce', type: 'bytes32' },
+  ],
+};
+
+const randomNonce = () => {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return `0x${Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
+};
+
+class GatewayExactScheme {
+  constructor(address, walletClient) {
+    this.scheme = 'exact';
+    this.address = address;
+    this.walletClient = walletClient;
+  }
+
+  async createPaymentPayload(x402Version, requirements) {
+    const now = Math.floor(Date.now() / 1000);
+    const authorization = {
+      from: this.address,
+      to: getAddress(requirements.payTo),
+      value: requirements.amount,
+      validAfter: '0',
+      validBefore: (now + requirements.maxTimeoutSeconds).toString(),
+      nonce: randomNonce(),
+    };
+
+    const signature = await this.walletClient.signTypedData({
+      account: this.address,
+      domain: {
+        name: requirements.extra.name,
+        version: requirements.extra.version,
+        chainId: ARC_CHAIN_ID,
+        verifyingContract: getAddress(requirements.extra.verifyingContract ?? requirements.asset),
+      },
+      types: AUTHORIZATION_TYPES,
+      primaryType: 'TransferWithAuthorization',
+      message: {
+        from: getAddress(authorization.from),
+        to: getAddress(authorization.to),
+        value: BigInt(authorization.value),
+        validAfter: BigInt(authorization.validAfter),
+        validBefore: BigInt(authorization.validBefore),
+        nonce: authorization.nonce,
+      },
+    });
+
+    return { x402Version, payload: { authorization, signature } };
+  }
+}
 
 const byId = (id) => document.getElementById(id);
 const esc = (value) =>
@@ -61,9 +142,71 @@ const samplePayload = () => {
 
 let walletAddress = null;
 let paidFetch = null;
+let walletClientRef = null;
+
+const arcPublicClient = createPublicClient({ chain: arcMainnet, transport: http(ARC_RPC_URL) });
 
 function showWallet(state, title, body) {
   setResult('wallet-status', title, body, state);
+}
+
+/**
+ * Tops up the wallet's Gateway balance if it's short of `requiredAtomicAmount`.
+ * Deposits only the shortfall, so this never moves more of the visitor's money
+ * than the current run needs. Two on-chain transactions when a deposit is
+ * needed (approve, then deposit); none when the Gateway balance already covers it.
+ */
+async function ensureGatewayBalance(walletClient, address, requiredAtomicAmount) {
+  const available = await arcPublicClient.readContract({
+    address: ARC_GATEWAY_ADDRESS,
+    abi: GATEWAY_ABI,
+    functionName: 'availableBalance',
+    args: [ARC_USDC_ADDRESS, address],
+  });
+  if (available >= requiredAtomicAmount) {
+    return { deposited: false };
+  }
+
+  const shortfall = requiredAtomicAmount - available;
+  const walletBalance = await arcPublicClient.readContract({
+    address: ARC_USDC_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: 'balanceOf',
+    args: [address],
+  });
+  if (walletBalance < shortfall) {
+    throw new Error(
+      `Wallet does not hold enough Arc USDC. Needs ${shortfall} more atomic units in Circle's Gateway, wallet only holds ${walletBalance}.`,
+    );
+  }
+
+  showWallet('warn', 'Depositing into Circle Gateway', 'Circle settles this payment from a balance held in its Gateway contract, not your wallet directly. Approve the deposit in your wallet.');
+  const allowance = await arcPublicClient.readContract({
+    address: ARC_USDC_ADDRESS,
+    abi: ERC20_ABI,
+    functionName: 'allowance',
+    args: [address, ARC_GATEWAY_ADDRESS],
+  });
+  if (allowance < shortfall) {
+    const approveHash = await walletClient.writeContract({
+      address: ARC_USDC_ADDRESS,
+      abi: ERC20_ABI,
+      functionName: 'approve',
+      args: [ARC_GATEWAY_ADDRESS, shortfall],
+    });
+    await arcPublicClient.waitForTransactionReceipt({ hash: approveHash });
+  }
+
+  showWallet('warn', 'Depositing into Circle Gateway', 'Approval confirmed. Approve the deposit itself in your wallet.');
+  const depositHash = await walletClient.writeContract({
+    address: ARC_GATEWAY_ADDRESS,
+    abi: GATEWAY_ABI,
+    functionName: 'deposit',
+    args: [ARC_USDC_ADDRESS, shortfall],
+  });
+  await arcPublicClient.waitForTransactionReceipt({ hash: depositHash });
+
+  return { deposited: true, depositHash };
 }
 
 async function readJson(response) {
@@ -111,13 +254,11 @@ async function connectWallet() {
     chain: arcMainnet,
     transport: custom(window.ethereum),
   });
-  const publicClient = createPublicClient({ chain: arcMainnet, transport: http(ARC_RPC_URL) });
-  const signer = toClientEvmSigner({
-    address,
-    signTypedData: (message) => walletClient.signTypedData({ account: address, ...message }),
-  }, publicClient);
-
-  const client = new x402Client().register(ARC_CAIP2, new ExactEvmScheme(signer));
+  walletClientRef = walletClient;
+  const client = new x402Client().register(ARC_CAIP2, new GatewayExactScheme(address, walletClient));
+  // Arc's USDC is not one of the SDK's built-in default assets, so without this
+  // the client refuses the facilitator's own token before asking the wallet.
+  client.setSpendControls({ allowedAssets: true });
   paidFetch = wrapFetchWithPayment(window.fetch.bind(window), client);
 
   byId('connected-wallet').textContent = shortHash(address);
@@ -278,6 +419,19 @@ async function payAndRun() {
     if (!paidFetch) await connectWallet();
     if (!paidFetch) return;
     const payload = samplePayload();
+
+    const aboutResponse = await fetch('/about', { headers: { accept: 'application/json' } });
+    const about = await readJson(aboutResponse);
+    const priceUsdc = about.arcPaidDemo?.payment?.price?.amount ?? '0.10';
+    const requiredAtomicAmount = parseUnits(priceUsdc, 6);
+
+    setResult('paid-summary', 'Checking Gateway balance', 'Making sure enough Arc USDC is deposited with Circle before paying.');
+    out.textContent = 'Checking Circle Gateway balance...';
+    const gatewayResult = await ensureGatewayBalance(walletClientRef, walletAddress, requiredAtomicAmount);
+    if (gatewayResult.deposited) {
+      out.textContent = `Deposited into Circle Gateway: ${gatewayResult.depositHash}`;
+    }
+
     setResult('paid-summary', 'Waiting for wallet', 'Approve the x402 payment in your wallet. The app will run after payment.');
     out.textContent = 'Waiting for wallet payment...';
     const response = await paidFetch('/demo/certify/paid', {

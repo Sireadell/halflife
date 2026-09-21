@@ -22,9 +22,25 @@ test('the Arc demo payment config defaults to Circle on Arc mainnet', () => {
   assert.equal(config.payTo, ARC_DEMO_PAY_TO);
   assert.match(config.facilitatorUrl, /gateway-api\.circle\.com/);
   assert.equal(config.accepts.scheme, 'exact');
-  assert.equal(config.accepts.price.amount, '100000');
+  assert.equal(config.accepts.price.amount, '10000');
   assert.equal(config.accepts.price.asset, ARC_USDC.address);
-  assert.deepEqual(config.accepts.price.extra, { name: 'USDC', version: '2' });
+  // Circle's facilitator matches this against its own published `extra` and
+  // answers "unsupported_scheme" on any mismatch, so the domain is pinned here.
+  assert.deepEqual(config.accepts.price.extra, {
+    name: 'GatewayWalletBatched',
+    version: '1',
+    verifyingContract: '0x77777777dcc4d5a8b6e418fd04d8997ef11000ee',
+  });
+});
+
+test('the Arc demo asks for more validity than Circle requires as a minimum', () => {
+  const config = resolveArcDemoPaymentConfig({});
+  // Circle publishes minValiditySeconds 604800. Advertising exactly that is
+  // rejected as "authorization_validity_too_short" once clock skew is counted.
+  assert.ok(
+    config.accepts.maxTimeoutSeconds > 604800,
+    `expected more than Circle's 604800 minimum, got ${config.accepts.maxTimeoutSeconds}`,
+  );
 });
 
 test('the Arc demo route table protects only the paid demo endpoint', () => {
