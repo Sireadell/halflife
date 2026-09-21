@@ -5,7 +5,11 @@ const ARC_CHAIN_ID = 5042;
 const ARC_CAIP2 = 'eip155:5042';
 const ARC_RPC_URL = 'https://rpc.mainnet.arc.io';
 const ARC_EXPLORER = 'https://arc.etherscan.io';
-const SAMPLE_AGENT = 'https://stressproof-demo-agent.example.invalid/chat';
+// Halflife's own real demo agent (source: demo-agent/server.js in this repo,
+// deployed separately at github.com/Sireadell/halflife-demo-agent). It's ours,
+// so we could complete StressProof's one-time consent proof for it ourselves —
+// a judge needs no cooperation from anyone to see a real run complete.
+const SAMPLE_AGENT = 'https://halflife-demo-agent.onrender.com';
 const SAMPLE_AGENT_ADDRESS = '0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53';
 
 // Circle settles this route's x402 payment from a balance the payer has already
