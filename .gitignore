@@ -8,3 +8,7 @@ node_modules/
 halflife-arc-demo-result.json
 __pycache__/
 .venv/
+
+# Local design review drafts, not for the repo
+docs/frontend-mockup.html
+docs/FRONTEND_REDESIGN_RATIONALE.md
