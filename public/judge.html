@@ -13,6 +13,7 @@
   --ink: #1B1A17;
   --body-text: #4A4638;
   --muted: #948B78;
+  --link-quiet: #7C7462;
   --quiet: #A39A82;
   --line: #DDD5C0;
   --accent: #3B5D42;
@@ -85,7 +86,7 @@ h1 {
 .wallet-line {
   margin-top: 28px;
   font-size: 13px;
-  color: var(--quiet);
+  color: var(--link-quiet);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -101,7 +102,7 @@ h1 {
   background: none !important;
   padding: 0 !important;
   font-size: 13px;
-  color: var(--quiet);
+  color: var(--link-quiet);
   text-align: center;
   max-width: 460px;
 }
@@ -183,18 +184,8 @@ details.tech > summary {
 }
 .tech-body { margin-top: 18px; display: flex; flex-direction: column; gap: 18px; font-size: 13px; color: var(--muted); }
 .tech-row { display: flex; flex-direction: column; gap: 8px; }
-.tech-row .quiet-btn {
-  background: none;
-  border: none;
-  padding: 0;
-  color: var(--body-text);
-  text-decoration: underline;
-  font-size: 13px;
-  text-align: left;
-  cursor: pointer;
-}
 details.agent-edit { margin-top: 4px; }
-details.agent-edit summary { color: var(--body-text); text-decoration: underline; cursor: pointer; font-size: 13px; }
+details.agent-edit summary { color: var(--link-quiet); text-decoration: underline; cursor: pointer; font-size: 13px; }
 .field { display: grid; gap: 6px; margin-top: 12px; }
 .field label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
 input, textarea {
