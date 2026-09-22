@@ -40,6 +40,10 @@ button, .button {
   font: 800 14px/1.2 inherit;
   cursor: pointer;
 }
+button:disabled {
+  cursor: not-allowed;
+  opacity: .62;
+}
 button.secondary, .button.secondary {
   background: #fff;
   color: var(--ink);
@@ -129,10 +133,10 @@ pre {
   font-size: 14px;
 }
 .hero {
-  max-width: 900px;
+  max-width: 1040px;
   margin: 0 auto;
-  padding: 70px 26px 42px;
-  text-align: center;
+  padding: 64px 26px 36px;
+  text-align: left;
 }
 .eyebrow, .label, .key {
   color: var(--muted);
@@ -142,18 +146,96 @@ pre {
   text-transform: uppercase;
 }
 .lede {
-  max-width: 670px;
-  margin: 22px auto 0;
+  max-width: 760px;
+  margin-top: 22px;
   color: var(--muted);
   font-size: 19px;
 }
+.hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr);
+  gap: 28px;
+  align-items: end;
+}
+.hero-panel {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  padding: 18px;
+}
+.hero-panel h2 {
+  margin-top: 8px;
+  font-size: 25px;
+}
+.hero-panel .facts {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+.fact {
+  display: grid;
+  grid-template-columns: 118px minmax(0, 1fr);
+  gap: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.fact:first-child { border-top: 0; padding-top: 0; }
 .actions {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
   margin-top: 20px;
 }
-.hero .actions { justify-content: center; margin-top: 30px; }
+.hero .actions { justify-content: flex-start; margin-top: 30px; }
+.flow-section {
+  padding: 12px 38px 54px;
+}
+.flow {
+  max-width: 1160px;
+  margin: auto;
+}
+.flow-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 24px;
+  margin-bottom: 18px;
+}
+.flow-head p { max-width: 470px; }
+.flow-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.flow-card {
+  min-height: 185px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: #fff;
+  padding: 18px;
+}
+.step-num {
+  display: inline-grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  font-weight: 900;
+  color: var(--muted);
+}
+.flow-card h3 { margin-top: 18px; }
+.flow-card p { margin-top: 8px; font-size: 13px; }
+.limit-strip {
+  max-width: 1160px;
+  margin: 14px auto 0;
+  border: 1px solid #d9c47f;
+  border-radius: 8px;
+  background: var(--amber-soft);
+  padding: 14px 16px;
+  color: #564113;
+}
+.limit-strip strong { display: block; color: var(--ink); margin-bottom: 3px; }
 .story-wrap { padding: 8px 38px 64px; }
 .story {
   max-width: 1160px;
@@ -181,14 +263,47 @@ pre {
 }
 .network { color: var(--muted); font-size: 12px; }
 .case-head {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 220px;
   gap: 24px;
-  padding: 25px 26px 23px;
+  padding: 28px 30px 24px;
   background: #fff;
 }
-.case-head h2 { margin-top: 5px; }
+.case-head h2 {
+  max-width: 780px;
+  margin-top: 6px;
+  font-size: clamp(30px, 4vw, 44px);
+  line-height: 1.02;
+}
+.case-head .subcopy {
+  max-width: 760px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.55;
+}
 .agent { margin-top: 8px; color: var(--muted); word-break: break-all; }
+.status-box {
+  align-self: start;
+  border: 1px solid #d7a5a0;
+  border-radius: 7px;
+  background: var(--red-soft);
+  padding: 15px;
+}
+.status-box strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--red);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.status-box p {
+  color: #57231f;
+  font-size: 13px;
+  line-height: 1.45;
+}
 .tag {
   align-self: start;
   border: 1px solid var(--line);
@@ -244,6 +359,7 @@ pre {
   border-bottom: 1px solid var(--line);
 }
 .panel-head h3 { margin-top: 4px; }
+.panel-head p { margin-top: 8px; font-size: 14px; }
 .panel-body { padding: 18px; }
 .comparison {
   display: grid;
@@ -351,26 +467,32 @@ footer {
   font-size: 13px;
 }
 @media (max-width: 900px) {
-  .story-body, .grid, .status-grid { grid-template-columns: 1fr; }
+  .hero-grid, .story-body, .grid, .status-grid, .flow-grid { grid-template-columns: 1fr; }
+  .case-head { grid-template-columns: 1fr; }
   .timeline { grid-template-columns: 1fr; }
   .event { min-height: 0; border-right: 0; border-bottom: 1px solid var(--line); }
   .event:last-child { border-bottom: 0; }
-  .section-title { align-items: start; flex-direction: column; }
+  .section-title, .flow-head { align-items: start; flex-direction: column; }
 }
 @media (max-width: 640px) {
   .page { width: calc(100% - 16px); margin: 8px auto; border-radius: 12px; }
   .topbar, footer { align-items: flex-start; flex-direction: column; padding: 19px; }
+  .topbar, .navlinks, .hero-grid, .hero-grid > *, .story, .story-body, .panel, .shell, .section-title, .section-title p, .flow, .flow-head, .flow-head p { min-width: 0; max-width: 100%; }
   .navlinks { gap: 13px; }
   .hero { padding: 46px 20px 30px; text-align: left; }
   h1 { font-size: 37px; }
   .lede { margin-left: 0; font-size: 16px; }
+  .hero-panel { padding: 15px; }
+  .fact { grid-template-columns: 1fr; gap: 4px; }
   .hero .actions, .actions { justify-content: start; }
   button, .button { width: 100%; }
-  .story-wrap, .live-section { padding-left: 13px; padding-right: 13px; }
+  .story-wrap, .live-section, .flow-section { padding-left: 13px; padding-right: 13px; }
   .case-head { align-items: start; flex-direction: column; padding: 20px; }
   .case-head h2 { font-size: 25px; }
+  .case-head .subcopy, .agent, .status-box, .event p, .check p { max-width: 100%; }
   .comparison { grid-template-columns: 1fr; }
   .check, .record { align-items: stretch; flex-direction: column; }
+  .record a { white-space: normal; }
   .row { grid-template-columns: 1fr; gap: 4px; }
 }
 </style>
@@ -389,68 +511,107 @@ footer {
 
   <main id="top">
     <section class="hero">
-      <div class="eyebrow">Public agent certification history on Arc</div>
-      <h1>See when an agent stops keeping its promise.</h1>
-      <p class="lede">Halflife tests an agent, writes the result to Arc, and leaves a public record when a later check fails.</p>
-      <div class="actions">
-        <a class="button" href="#live">Run a paid check</a>
-        <button class="secondary" id="verify-arc">Verify Arc proof</button>
+      <div class="hero-grid">
+        <div>
+          <div class="eyebrow">Agent certification on Arc</div>
+          <h1>Halflife certifies AI agents, then takes the certificate away if they get worse.</h1>
+          <p class="lede">Most agent tests happen once. Halflife keeps the history alive: test the agent, publish the certificate to Arc, check it again later, and revoke the certificate when the agent no longer holds up.</p>
+          <div class="actions">
+            <a class="button" href="#live">Run a paid check</a>
+            <a class="button secondary" href="#history">See real proof</a>
+            <button class="secondary" id="verify-arc">Verify Arc proof</button>
+          </div>
+        </div>
+        <aside class="hero-panel" aria-label="Halflife summary">
+          <span class="label">What this is</span>
+          <h2>A public reliability record for owner-controlled agents.</h2>
+          <div class="facts">
+            <div class="fact"><span class="key mono">Test</span><p>Run adversarial checks against an agent the owner controls.</p></div>
+            <div class="fact"><span class="key mono">Publish</span><p>Write issue and revoke events to Arc mainnet.</p></div>
+            <div class="fact"><span class="key mono">Recheck</span><p>Compare later behavior with the original result.</p></div>
+            <div class="fact"><span class="key mono">Revoke</span><p>Leave a visible record when the agent slips.</p></div>
+          </div>
+        </aside>
       </div>
+    </section>
+
+    <section class="flow-section" id="flow">
+      <div class="flow">
+        <div class="flow-head">
+          <div>
+            <span class="label">Complete app flow</span>
+            <h2>From agent owner to public proof.</h2>
+          </div>
+          <p>Halflife is built for agents whose owners want a checkable trust record, not for secretly attacking someone else's agent.</p>
+        </div>
+        <div class="flow-grid">
+          <article class="flow-card"><span class="step-num">1</span><h3>Owner submits an agent</h3><p>The owner provides the agent endpoint, the agent wallet, and a sample request body so the test can run against the right target.</p></article>
+          <article class="flow-card"><span class="step-num">2</span><h3>Halflife runs the test</h3><p>The agent is checked for brittle behavior, bad confidence, and responses that look successful when they should not.</p></article>
+          <article class="flow-card"><span class="step-num">3</span><h3>Arc stores the certificate</h3><p>When the agent passes, Halflife writes the certificate fingerprint to Arc mainnet so the record is not just our database.</p></article>
+          <article class="flow-card"><span class="step-num">4</span><h3>Later checks can revoke it</h3><p>If the agent gets worse, Halflife writes the revoke record to Arc and the public history changes from certified to revoked.</p></article>
+        </div>
+      </div>
+      <div class="limit-strip"><strong>Current limit</strong>Today this is for agents whose owners can prove control. Vetting a stranger's agent without cooperation is a harder problem and not claimed here.</div>
     </section>
 
     <section class="story-wrap" id="history">
       <article class="story" aria-label="Public certificate history for the Arc day 3 demo agent">
         <div class="appbar">
-          <span class="appbrand">Halflife / Certificate history</span>
-          <span class="network">Arc mainnet</span>
+          <span class="appbrand">Halflife / Real Arc history</span>
+          <span class="network">Arc mainnet, chain 5042</span>
         </div>
         <div class="case-head">
           <div>
             <span class="label">Verified demonstration record</span>
-            <h2>arc-day3-demo-agent</h2>
-            <p class="agent mono">0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53</p>
+            <h2>This agent passed once. Halflife caught it slipping later.</h2>
+            <p class="subcopy">The same agent first rejected bad input, then returned a success-shaped answer to input it should have refused. Halflife wrote both moments to Arc.</p>
+            <p class="agent mono">arc-day3-demo-agent · 0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53</p>
           </div>
-          <span class="tag bad">Revoked</span>
+          <div class="status-box">
+            <strong>Certificate revoked</strong>
+            <p>The revoke record is public, so the old certificate cannot be presented as current trust.</p>
+          </div>
         </div>
         <div class="timeline">
           <div class="event">
             <span class="label">September 20, 2026, 10:40:49 UTC</span>
-            <strong>Certificate written to Arc</strong>
-            <p>RESILIENT, score 100</p>
+            <strong>Certificate issued</strong>
+            <p>First run passed. The agent rejected input it should reject. Score 100.</p>
           </div>
           <div class="event">
             <span class="label">September 20, 2026, 10:40:52 UTC</span>
-            <strong>Second result written to Arc</strong>
-            <p>PARTIAL, score 83</p>
+            <strong>Second result saved</strong>
+            <p>Later result changed to PARTIAL. The agent no longer held the same behavior.</p>
           </div>
           <div class="event fail">
             <span class="label">September 20, 2026, 10:40:52 UTC</span>
             <strong>Certificate revoked</strong>
-            <p>The issue and revoke records are both public.</p>
+            <p>Halflife published the revoke event to Arc, tied to the original certificate.</p>
           </div>
         </div>
         <div class="story-body">
           <section class="panel">
             <div class="panel-head">
-              <span class="label">Why it was revoked</span>
-              <h3>The demo agent changed its response.</h3>
+              <span class="label">What changed</span>
+              <h3>The agent stopped refusing bad input.</h3>
+              <p>That is the whole point of Halflife: a certificate is not a forever badge. If behavior gets worse, the record changes in public.</p>
             </div>
             <div class="panel-body">
               <div class="comparison">
                 <div class="cell">
                   <span class="label">First result</span>
-                  <strong>It rejected input it should reject.</strong>
+                  <strong>Rejected input it should reject.</strong>
                   <p>RESILIENT, score 100.</p>
                 </div>
                 <div class="cell fail">
                   <span class="label">Second result</span>
-                  <strong>It returned a response shaped as success.</strong>
+                  <strong>Returned a success-shaped answer.</strong>
                   <p>PARTIAL, score 83.</p>
                 </div>
               </div>
               <div class="check">
-                <p>This is the real Arc demonstration record. It proves Halflife can publish both the original certificate and its revocation.</p>
-                <a class="button secondary" href="/demo/arc-proof/verify">Open verifier</a>
+                <p>This is a real Arc demo record. It proves Halflife can publish both the original certificate and the revocation.</p>
+                <a class="button secondary" href="/demo/arc-proof/verify">Verify both records</a>
               </div>
               <div id="arc-summary" class="result warn">
                 <strong>Ready to verify</strong>
@@ -487,7 +648,7 @@ footer {
       <div class="shell">
         <div class="section-title">
           <div>
-            <span class="label">Live path</span>
+            <span class="label">Try the live path</span>
             <h2>Pay, run, then inspect the record.</h2>
           </div>
           <p>This page is wired to the real Halflife routes. You can verify the existing Arc proof, check whether payment is enabled, and run the paid certification path from here.</p>

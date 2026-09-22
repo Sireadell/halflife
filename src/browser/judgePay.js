@@ -128,6 +128,20 @@ const setResult = (id, title, body, state = 'warn') => {
   node.className = `result ${state}`;
   node.innerHTML = `<strong>${esc(title)}</strong>${esc(body)}`;
 };
+const setButtonBusy = (id, busy, text) => {
+  const node = byId(id);
+  if (!node) return;
+  if (!node.dataset.idleText) node.dataset.idleText = node.textContent;
+  node.disabled = Boolean(busy);
+  node.textContent = text ?? node.dataset.idleText;
+};
+const setButtonReady = (id, text) => {
+  const node = byId(id);
+  if (!node) return;
+  if (!node.dataset.idleText) node.dataset.idleText = node.textContent;
+  node.disabled = false;
+  node.textContent = text ?? node.dataset.idleText;
+};
 const plainBodyText = (body) => {
   if (!body || typeof body !== 'object') return '';
   return [body.error, body.message, body.reason, body.next, body.status, body.detail].filter(Boolean).join(' ');
@@ -250,27 +264,34 @@ async function connectWallet() {
     return null;
   }
 
+  setButtonBusy('connect-wallet', true, 'Opening wallet');
   showWallet('warn', 'Opening wallet', 'Approve the connection, then approve Arc if your wallet asks.');
-  await ensureArcNetwork(window.ethereum);
-  const [address] = await window.ethereum.request({ method: 'eth_requestAccounts' });
-  walletAddress = address;
+  try {
+    await ensureArcNetwork(window.ethereum);
+    const [address] = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    walletAddress = address;
 
-  const walletClient = createWalletClient({
-    account: address,
-    chain: arcMainnet,
-    transport: custom(window.ethereum),
-  });
-  walletClientRef = walletClient;
-  const client = new x402Client().register(ARC_CAIP2, new GatewayExactScheme(address, walletClient));
-  // Arc's USDC is not one of the SDK's built-in default assets, so without this
-  // the client refuses the facilitator's own token before asking the wallet.
-  client.setSpendControls({ allowedAssets: true });
-  paidFetch = wrapFetchWithPayment(window.fetch.bind(window), client);
+    const walletClient = createWalletClient({
+      account: address,
+      chain: arcMainnet,
+      transport: custom(window.ethereum),
+    });
+    walletClientRef = walletClient;
+    const client = new x402Client().register(ARC_CAIP2, new GatewayExactScheme(address, walletClient));
+    // Arc's USDC is not one of the SDK's built-in default assets, so without this
+    // the client refuses the facilitator's own token before asking the wallet.
+    client.setSpendControls({ allowedAssets: true });
+    paidFetch = wrapFetchWithPayment(window.fetch.bind(window), client);
 
-  byId('connected-wallet').textContent = shortHash(address);
-  setTag('wallet-tag', 'ok', 'Connected');
-  showWallet('ok', 'Wallet connected', `Connected ${shortHash(address)} on Arc. The next button can pay and run the check.`);
-  return address;
+    byId('connected-wallet').textContent = shortHash(address);
+    setTag('wallet-tag', 'ok', 'Connected');
+    setButtonReady('connect-wallet', `Connected ${shortHash(address)}`);
+    showWallet('ok', 'Wallet connected', `Connected ${shortHash(address)} on Arc. The next button can pay and run the check.`);
+    return address;
+  } catch (error) {
+    setButtonReady('connect-wallet', 'Connect wallet');
+    throw error;
+  }
 }
 
 // The facilitator's real rejection reason (self_transfer, insufficient_balance,
@@ -345,6 +366,7 @@ function summarizePaidResponse(status, body, headers) {
 
 async function loadAbout() {
   const result = byId('status-result');
+  setButtonBusy('refresh-status', true, 'Refreshing');
   result.innerHTML = '<strong>Checking now</strong> Asking Halflife for its live status.';
   try {
     const response = await fetch('/about', { headers: { accept: 'application/json' } });
@@ -371,11 +393,14 @@ async function loadAbout() {
     setTag('service-tag', 'bad', 'Offline');
     setTag('arc-tag', 'bad', 'Check');
     setResult('status-result', 'Could not reach app', `The status check failed: ${error.message}`, 'bad');
+  } finally {
+    setButtonReady('refresh-status', 'Refresh status');
   }
 }
 
 async function loadPaidRun() {
   const panel = byId('paid-run');
+  setButtonBusy('refresh-paid', true, 'Refreshing');
   try {
     const response = await fetch('/demo/certify/paid/latest', { headers: { accept: 'application/json' } });
     if (response.status === 404) {
@@ -403,11 +428,14 @@ async function loadPaidRun() {
   } catch (error) {
     panel.className = 'list result bad';
     panel.innerHTML = `<strong>Could not load latest proof</strong>${esc(error.message)}`;
+  } finally {
+    setButtonReady('refresh-paid', 'Refresh latest proof');
   }
 }
 
 async function verifyArcProof() {
   const out = byId('arc-verify-result');
+  setButtonBusy('verify-arc', true, 'Verifying');
   setResult('arc-summary', 'Checking Arc now', 'Halflife is checking both proof records through the app.');
   out.textContent = 'Checking Arc now...';
   try {
@@ -428,11 +456,14 @@ async function verifyArcProof() {
   } catch (error) {
     setResult('arc-summary', 'Could not verify Arc proof', error.message, 'bad');
     out.textContent = JSON.stringify({ error: error.message }, null, 2);
+  } finally {
+    setButtonReady('verify-arc', 'Verify Arc proof');
   }
 }
 
 async function checkSetupWithoutPaying() {
   const out = byId('paid-route-result');
+  setButtonBusy('check-no-pay', true, 'Checking setup');
   setResult('paid-summary', 'Checking paid path now', 'Halflife is calling the paid path without wallet payment.');
   out.textContent = 'Calling the paid path now...';
   try {
@@ -449,11 +480,14 @@ async function checkSetupWithoutPaying() {
   } catch (error) {
     setResult('paid-summary', 'Could not check paid path', error.message, 'bad');
     out.textContent = JSON.stringify({ error: error.message }, null, 2);
+  } finally {
+    setButtonReady('check-no-pay', 'Check setup without paying');
   }
 }
 
 async function payAndRun() {
   const out = byId('paid-route-result');
+  setButtonBusy('pay-live', true, 'Preparing payment');
   try {
     if (!paidFetch) await connectWallet();
     if (!paidFetch) return;
@@ -499,14 +533,17 @@ async function payAndRun() {
   } catch (error) {
     setResult('paid-summary', 'Live payment did not complete', error.message, 'bad');
     out.textContent = JSON.stringify({ error: error.message }, null, 2);
+  } finally {
+    setButtonReady('pay-live', 'Pay and run live check');
   }
 }
 
 async function copyRequest() {
+  setButtonBusy('copy-request', true, 'Copying');
   await navigator.clipboard.writeText(JSON.stringify(samplePayload(), null, 2));
-  byId('copy-request').textContent = 'Copied';
+  setButtonReady('copy-request', 'Copied');
   setTimeout(() => {
-    byId('copy-request').textContent = 'Copy request';
+    setButtonReady('copy-request', 'Copy request');
   }, 1400);
 }
 

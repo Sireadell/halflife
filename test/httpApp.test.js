@@ -84,7 +84,9 @@ async function withApp(
   const call = async (method, route, body) => {
     const response = await fetch(`${base}${route}`, {
       method,
-      headers: body ? { 'content-type': 'application/json' } : undefined,
+      headers: body
+        ? { 'content-type': 'application/json', accept: 'application/json' }
+        : { accept: 'application/json' },
       body: body ? JSON.stringify(body) : undefined,
     });
     return { status: response.status, body: await response.json() };
