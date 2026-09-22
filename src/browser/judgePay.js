@@ -128,23 +128,19 @@ const setResult = (id, title, body, state = 'warn') => {
   node.className = `result ${state}`;
   node.innerHTML = `<strong>${esc(title)}</strong>${esc(body)}`;
 };
-// Stores and restores innerHTML, not textContent: #pay-live has a nested
-// <span id="price"> that must survive a busy/ready cycle. Overwriting
-// textContent used to destroy that span on the first click, permanently
-// breaking every later loadAbout() call that writes into #price.
 const setButtonBusy = (id, busy, text) => {
   const node = byId(id);
   if (!node) return;
-  if (node.dataset.idleHtml === undefined) node.dataset.idleHtml = node.innerHTML;
+  if (!node.dataset.idleText) node.dataset.idleText = node.textContent;
   node.disabled = Boolean(busy);
-  node.innerHTML = text !== undefined ? esc(text) : node.dataset.idleHtml;
+  node.textContent = text ?? node.dataset.idleText;
 };
 const setButtonReady = (id, text) => {
   const node = byId(id);
   if (!node) return;
-  if (node.dataset.idleHtml === undefined) node.dataset.idleHtml = node.innerHTML;
+  if (!node.dataset.idleText) node.dataset.idleText = node.textContent;
   node.disabled = false;
-  node.innerHTML = text !== undefined ? esc(text) : node.dataset.idleHtml;
+  node.textContent = text ?? node.dataset.idleText;
 };
 const plainBodyText = (body) => {
   if (!body || typeof body !== 'object') return '';
@@ -288,7 +284,6 @@ async function connectWallet() {
     paidFetch = wrapFetchWithPayment(window.fetch.bind(window), client);
 
     byId('connected-wallet').textContent = shortHash(address);
-    byId('wallet-line')?.classList.add('ok');
     setTag('wallet-tag', 'ok', 'Connected');
     setButtonReady('connect-wallet', `Connected ${shortHash(address)}`);
     showWallet('ok', 'Wallet connected', `Connected ${shortHash(address)} on Arc. The next button can pay and run the check.`);
@@ -382,8 +377,7 @@ async function loadAbout() {
     byId('service-state').textContent = memoryReady ? 'Ready' : 'Limited';
     setTag('service-tag', memoryReady ? 'ok' : 'warn', memoryReady ? 'Ready' : 'Limited');
     byId('arc-state').textContent = arc?.enabled ? 'Ready' : 'Safe stop';
-    const priceNode = byId('price');
-    if (priceNode) priceNode.textContent = `${arc?.price?.amount || '0.10'} ${arc?.price?.currency || 'USDC'}`;
+    byId('price').textContent = `${arc?.price?.amount || '0.10'} ${arc?.price?.currency || 'USDC'}`;
     setTag('arc-tag', arc?.enabled ? 'ok' : 'warn', arc?.enabled ? 'Payment on' : 'No charge');
     setResult(
       'status-result',
@@ -491,48 +485,6 @@ async function checkSetupWithoutPaying() {
   }
 }
 
-// Front-facing result: a status word, one sentence, one link — never the raw
-// JSON. The raw response still lands in #paid-route-result inside the
-// technical-details panel, so nothing is lost, only kept out of the way for
-// someone who just wants to know what happened.
-function renderRunResult(status, body) {
-  const panel = byId('run-result');
-  if (!panel) return;
-  panel.hidden = false;
-
-  const facilitatorState = summarizePaidResponse(status, body).state;
-  const verdict = body?.currentVerdict;
-  const revoked = Boolean(body?.revoked);
-  const arcWritten = Boolean(body?.arc?.written);
-  const txHash = body?.arc?.txHash;
-
-  let cssState = facilitatorState;
-  let verdictText = verdict || (status >= 200 && status < 300 ? 'Done' : 'Not run');
-  let sentence = body?.summary || plainBodyText(body) || 'The app answered. See the technical details below for the exact result.';
-
-  if (status >= 200 && status < 300 && verdict) {
-    cssState = revoked ? 'bad' : 'ok';
-    sentence = revoked
-      ? `This agent's certificate was just revoked: ${body.reason || 'its behavior no longer holds up.'}`
-      : arcWritten
-        ? 'The agent held up. Certificate issued and written to Arc.'
-        : body?.reason || 'The check completed. No new Arc record was needed.';
-  }
-
-  panel.className = `run-result ${cssState}`;
-  byId('run-verdict').textContent = verdictText;
-  byId('run-sentence').textContent = sentence;
-
-  const linkWrap = byId('run-link-wrap');
-  const link = byId('run-link');
-  if (txHash && link && linkWrap) {
-    link.href = `${ARC_EXPLORER}/tx/${txHash}`;
-    linkWrap.hidden = false;
-  } else if (linkWrap) {
-    linkWrap.hidden = true;
-  }
-}
-
 async function payAndRun() {
   const out = byId('paid-route-result');
   setButtonBusy('pay-live', true, 'Preparing payment');
@@ -577,14 +529,12 @@ async function payAndRun() {
     const summary = summarizePaidResponse(response.status, body, response.headers);
     setResult('paid-summary', summary.title, summary.body, summary.state);
     out.textContent = JSON.stringify({ status: response.status, payer: walletAddress, body }, null, 2);
-    renderRunResult(response.status, body);
     loadPaidRun();
   } catch (error) {
     setResult('paid-summary', 'Live payment did not complete', error.message, 'bad');
     out.textContent = JSON.stringify({ error: error.message }, null, 2);
-    renderRunResult(0, { summary: error.message });
   } finally {
-    setButtonReady('pay-live');
+    setButtonReady('pay-live', 'Pay and run live check');
   }
 }
 
@@ -602,11 +552,6 @@ function boot() {
   byId('agent-address').value = SAMPLE_AGENT_ADDRESS;
   byId('sample-body').value = JSON.stringify({ message: 'What is 2 plus 2?' }, null, 2);
   byId('connected-wallet').textContent = 'Not connected';
-  const display = byId('target-url-display');
-  if (display) display.textContent = SAMPLE_AGENT;
-  byId('target-url').addEventListener('input', () => {
-    if (display) display.textContent = byId('target-url').value.trim() || SAMPLE_AGENT;
-  });
   byId('refresh-status').addEventListener('click', loadAbout);
   byId('refresh-paid').addEventListener('click', loadPaidRun);
   byId('verify-arc').addEventListener('click', verifyArcProof);
