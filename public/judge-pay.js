@@ -26707,6 +26707,7 @@ var ARC_RPC_URL = "https://rpc.mainnet.arc.io";
 var ARC_EXPLORER = "https://arc.etherscan.io";
 var SAMPLE_AGENT = "https://halflife-demo-agent.onrender.com";
 var SAMPLE_AGENT_ADDRESS = "0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53";
+var SAMPLE_BODY = { message: "What is 2 plus 2?" };
 var ARC_GATEWAY_ADDRESS = "0x77777777dcc4d5a8b6e418fd04d8997ef11000ee";
 var ARC_USDC_ADDRESS = "0x3600000000000000000000000000000000000000";
 var ERC20_ABI = [
@@ -26789,13 +26790,6 @@ var shortHash = (value) => {
   const text = String(value ?? "");
   return text.length > 20 ? `${text.slice(0, 10)}...${text.slice(-8)}` : text;
 };
-var row = (key, value) => `<div class="row"><div class="key mono">${esc(key)}</div><div class="value">${value}</div></div>`;
-var setTag = (id, state, text) => {
-  const node = byId(id);
-  if (!node) return;
-  node.className = `tag ${state}`;
-  node.textContent = text;
-};
 var setResult = (id, title, body, state = "warn") => {
   const node = byId(id);
   if (!node) return;
@@ -26816,23 +26810,21 @@ var setButtonReady = (id, text) => {
   node.disabled = false;
   node.textContent = text ?? node.dataset.idleText;
 };
+var showOutput = (id, text) => {
+  const node = byId(id);
+  if (!node) return;
+  node.hidden = false;
+  node.textContent = text;
+};
 var plainBodyText = (body) => {
   if (!body || typeof body !== "object") return "";
   return [body.error, body.message, body.reason, body.next, body.status, body.detail].filter(Boolean).join(" ");
 };
-var samplePayload = () => {
-  let sampleBody;
-  try {
-    sampleBody = JSON.parse(byId("sample-body").value);
-  } catch {
-    throw new Error("The sample request body must be valid JSON.");
-  }
-  return {
-    targetUrl: byId("target-url").value.trim(),
-    agentAddress: byId("agent-address").value.trim(),
-    sampleBody
-  };
-};
+var samplePayload = () => ({
+  targetUrl: SAMPLE_AGENT,
+  agentAddress: SAMPLE_AGENT_ADDRESS,
+  sampleBody: SAMPLE_BODY
+});
 var walletAddress = null;
 var paidFetch = null;
 var walletClientRef = null;
@@ -26935,8 +26927,6 @@ async function connectWallet() {
     const client = new x402Client().register(ARC_CAIP2, new GatewayExactScheme(address, walletClient));
     client.setSpendControls({ allowedAssets: true });
     paidFetch = wrapFetchWithPayment(window.fetch.bind(window), client);
-    byId("connected-wallet").textContent = shortHash(address);
-    setTag("wallet-tag", "ok", "Connected");
     setButtonReady("connect-wallet", `Connected ${shortHash(address)}`);
     showWallet("ok", "Wallet connected", `Connected ${shortHash(address)} on Arc. The next button can pay and run the check.`);
     return address;
@@ -27007,73 +26997,24 @@ function summarizePaidResponse(status, body, headers) {
   };
 }
 async function loadAbout() {
-  const result = byId("status-result");
-  setButtonBusy("refresh-status", true, "Refreshing");
-  result.innerHTML = "<strong>Checking now</strong> Asking Halflife for its live status.";
   try {
     const response = await fetch("/about", { headers: { accept: "application/json" } });
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const data = await response.json();
-    const memoryReady = Boolean(data.memory?.reachable);
     const arc = data.arcPaidDemo?.payment;
-    byId("service-state").textContent = memoryReady ? "Ready" : "Limited";
-    setTag("service-tag", memoryReady ? "ok" : "warn", memoryReady ? "Ready" : "Limited");
-    byId("arc-state").textContent = arc?.enabled ? "Ready" : "Safe stop";
-    byId("price").textContent = `${arc?.price?.amount || "0.10"} ${arc?.price?.currency || "USDC"}`;
-    setTag("arc-tag", arc?.enabled ? "ok" : "warn", arc?.enabled ? "Payment on" : "No charge");
-    setResult(
-      "status-result",
-      memoryReady ? "App is alive" : "App answered with limits",
-      memoryReady ? "Halflife answered the status check and its storage is reachable." : "Halflife answered the status check, but one backing service is not reachable.",
-      memoryReady ? "ok" : "warn"
-    );
-  } catch (error) {
-    byId("service-state").textContent = "Offline";
-    byId("arc-state").textContent = "Unknown";
-    setTag("service-tag", "bad", "Offline");
-    setTag("arc-tag", "bad", "Check");
-    setResult("status-result", "Could not reach app", `The status check failed: ${error.message}`, "bad");
-  } finally {
-    setButtonReady("refresh-status", "Refresh status");
-  }
-}
-async function loadPaidRun() {
-  const panel = byId("paid-run");
-  setButtonBusy("refresh-paid", true, "Refreshing");
-  try {
-    const response = await fetch("/demo/certify/paid/latest", { headers: { accept: "application/json" } });
-    if (response.status === 404) {
-      panel.className = "list result warn";
-      panel.innerHTML = "<strong>No saved paid proof yet</strong>The certificate page still shows the verified Arc proof that already exists.";
-      return;
+    const priceNote = byId("pay-price-note");
+    if (priceNote) {
+      const amount = arc?.price?.amount || "0.10";
+      const currency = arc?.price?.currency || "USDC";
+      priceNote.textContent = arc?.enabled ? `Runs against Halflife's own demo agent for ${amount} ${currency}.` : "Runs against Halflife's own demo agent.";
     }
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const data = await response.json();
-    const txHash = data.arc?.txHash;
-    const txValue = txHash ? `<a href="https://arc.etherscan.io/tx/${esc(txHash)}" target="_blank" rel="noopener">${esc(shortHash(txHash))}</a>` : esc(data.arc?.reason || "No Arc record was needed");
-    panel.className = "list result ok";
-    panel.innerHTML = [
-      "<strong>Latest paid proof is saved</strong>",
-      row("Saved", esc(data.savedAt || "unknown")),
-      row("Paid", esc(`${data.payment?.price?.amount || "unknown"} ${data.payment?.price?.currency || "USDC"} on ${data.payment?.network || "Arc"}`)),
-      row("Agent wallet", esc(data.agentAddress || "unknown")),
-      row("Standing", esc(data.standing || "unknown")),
-      row("Verdict", esc(data.currentVerdict || "unknown")),
-      row("Report hash", esc(data.reportHash || "missing")),
-      row("Arc record", txValue)
-    ].join("");
-  } catch (error) {
-    panel.className = "list result bad";
-    panel.innerHTML = `<strong>Could not load latest proof</strong>${esc(error.message)}`;
-  } finally {
-    setButtonReady("refresh-paid", "Refresh latest proof");
+  } catch {
   }
 }
 async function verifyArcProof() {
-  const out = byId("arc-verify-result");
-  setButtonBusy("verify-arc", true, "Verifying");
+  setButtonBusy("verify-history", true, "Verifying");
   setResult("arc-summary", "Checking Arc now", "Halflife is checking both proof records through the app.");
-  out.textContent = "Checking Arc now...";
+  showOutput("arc-verify-result", "Checking Arc now...");
   try {
     const response = await fetch("/demo/arc-proof/verify", { headers: { accept: "application/json" } });
     const body = await readJson(response);
@@ -27086,39 +27027,15 @@ async function verifyArcProof() {
       allOk ? `Halflife confirmed ${count} Arc records match the certificate history.` : "Halflife did not confirm every Arc record. Check the full response below.",
       allOk ? "ok" : "bad"
     );
-    out.textContent = JSON.stringify(body, null, 2);
+    showOutput("arc-verify-result", JSON.stringify(body, null, 2));
   } catch (error) {
     setResult("arc-summary", "Could not verify Arc proof", error.message, "bad");
-    out.textContent = JSON.stringify({ error: error.message }, null, 2);
+    showOutput("arc-verify-result", JSON.stringify({ error: error.message }, null, 2));
   } finally {
-    setButtonReady("verify-arc", "Verify Arc proof");
-  }
-}
-async function checkSetupWithoutPaying() {
-  const out = byId("paid-route-result");
-  setButtonBusy("check-no-pay", true, "Checking setup");
-  setResult("paid-summary", "Checking paid path now", "Halflife is calling the paid path without wallet payment.");
-  out.textContent = "Calling the paid path now...";
-  try {
-    const response = await fetch("/demo/certify/paid", {
-      method: "POST",
-      headers: { "content-type": "application/json", accept: "application/json" },
-      body: JSON.stringify(samplePayload())
-    });
-    const body = await readJson(response);
-    const summary = summarizePaidResponse(response.status, body, response.headers);
-    setResult("paid-summary", summary.title, summary.body, summary.state);
-    out.textContent = JSON.stringify({ status: response.status, body }, null, 2);
-    loadPaidRun();
-  } catch (error) {
-    setResult("paid-summary", "Could not check paid path", error.message, "bad");
-    out.textContent = JSON.stringify({ error: error.message }, null, 2);
-  } finally {
-    setButtonReady("check-no-pay", "Check setup without paying");
+    setButtonReady("verify-history", "Verify both records");
   }
 }
 async function payAndRun() {
-  const out = byId("paid-route-result");
   setButtonBusy("pay-live", true, "Preparing payment");
   try {
     if (!paidFetch) await connectWallet();
@@ -27130,19 +27047,19 @@ async function payAndRun() {
     if (!arcPayment?.enabled) {
       const reason = arcPayment?.reason || "Arc writing is not configured on this deployment.";
       setResult("paid-summary", "Cannot run a paid check here", reason, "bad");
-      out.textContent = JSON.stringify({ error: reason }, null, 2);
+      showOutput("paid-route-result", JSON.stringify({ error: reason }, null, 2));
       return;
     }
     const priceUsdc = arcPayment.price?.amount ?? "0.10";
     const requiredAtomicAmount = parseUnits(priceUsdc, 6);
     setResult("paid-summary", "Checking Gateway balance", "Making sure enough Arc USDC is deposited with Circle before paying.");
-    out.textContent = "Checking Circle Gateway balance...";
+    showOutput("paid-route-result", "Checking Circle Gateway balance...");
     const gatewayResult = await ensureGatewayBalance(walletClientRef, walletAddress, requiredAtomicAmount);
     if (gatewayResult.deposited) {
-      out.textContent = `Deposited into Circle Gateway: ${gatewayResult.depositHash}`;
+      showOutput("paid-route-result", `Deposited into Circle Gateway: ${gatewayResult.depositHash}`);
     }
     setResult("paid-summary", "Waiting for wallet", "Approve the x402 payment in your wallet. The app will run after payment.");
-    out.textContent = "Waiting for wallet payment...";
+    showOutput("paid-route-result", "Waiting for wallet payment...");
     const response = await paidFetch("/demo/certify/paid", {
       method: "POST",
       headers: { "content-type": "application/json", accept: "application/json" },
@@ -27151,41 +27068,21 @@ async function payAndRun() {
     const body = await readJson(response);
     const summary = summarizePaidResponse(response.status, body, response.headers);
     setResult("paid-summary", summary.title, summary.body, summary.state);
-    out.textContent = JSON.stringify({ status: response.status, payer: walletAddress, body }, null, 2);
-    loadPaidRun();
+    showOutput("paid-route-result", JSON.stringify({ status: response.status, payer: walletAddress, body }, null, 2));
   } catch (error) {
     setResult("paid-summary", "Live payment did not complete", error.message, "bad");
-    out.textContent = JSON.stringify({ error: error.message }, null, 2);
+    showOutput("paid-route-result", JSON.stringify({ error: error.message }, null, 2));
   } finally {
     setButtonReady("pay-live", "Pay and run live check");
   }
 }
-async function copyRequest() {
-  setButtonBusy("copy-request", true, "Copying");
-  await navigator.clipboard.writeText(JSON.stringify(samplePayload(), null, 2));
-  setButtonReady("copy-request", "Copied");
-  setTimeout(() => {
-    setButtonReady("copy-request", "Copy request");
-  }, 1400);
-}
 function boot() {
-  byId("target-url").value = SAMPLE_AGENT;
-  byId("agent-address").value = SAMPLE_AGENT_ADDRESS;
-  byId("sample-body").value = JSON.stringify({ message: "What is 2 plus 2?" }, null, 2);
-  byId("connected-wallet").textContent = "Not connected";
-  byId("refresh-status").addEventListener("click", loadAbout);
-  byId("refresh-paid").addEventListener("click", loadPaidRun);
-  byId("verify-arc").addEventListener("click", verifyArcProof);
+  byId("verify-history").addEventListener("click", verifyArcProof);
   byId("connect-wallet").addEventListener("click", () => connectWallet().catch((error) => {
     showWallet("bad", "Wallet connection failed", error.message);
   }));
   byId("pay-live").addEventListener("click", payAndRun);
-  byId("check-no-pay").addEventListener("click", checkSetupWithoutPaying);
-  byId("copy-request").addEventListener("click", () => copyRequest().catch((error) => {
-    setResult("paid-summary", "Copy failed", error.message, "bad");
-  }));
   loadAbout();
-  loadPaidRun();
 }
 boot();
 /*! Bundled license information:

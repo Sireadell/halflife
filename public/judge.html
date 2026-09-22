@@ -13,6 +13,8 @@
   --ink: #111613;
   --muted: #606861;
   --line: #d9ded8;
+  --accent: #1f8a5c;
+  --accent-soft: #e5f4ec;
   --blue: #2b5d9a;
   --blue-soft: #eaf1fb;
   --red: #963a34;
@@ -49,20 +51,6 @@ button.secondary, .button.secondary {
   color: var(--ink);
   border-color: var(--line);
 }
-input, textarea {
-  width: 100%;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: #fff;
-  color: var(--ink);
-  padding: 11px 12px;
-  font: inherit;
-}
-textarea {
-  min-height: 116px;
-  resize: vertical;
-  font: 13px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-}
 h1, h2, h3, p { margin: 0; }
 h1 {
   margin-top: 18px;
@@ -85,6 +73,7 @@ pre {
   white-space: pre-wrap;
   font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
+pre[hidden] { display: none; }
 .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
 .page {
   width: min(1320px, calc(100% - 40px));
@@ -133,12 +122,14 @@ pre {
   font-size: 14px;
 }
 .hero {
+  position: relative;
   max-width: 1040px;
   margin: 0 auto;
-  padding: 64px 26px 36px;
+  padding: 84px 26px 56px;
   text-align: left;
+  background: radial-gradient(ellipse 900px 420px at 20% 0%, var(--accent-soft) 0%, transparent 70%);
 }
-.eyebrow, .label, .key {
+.label, .key {
   color: var(--muted);
   font-size: 11px;
   font-weight: 850;
@@ -151,35 +142,6 @@ pre {
   color: var(--muted);
   font-size: 19px;
 }
-.hero-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr);
-  gap: 28px;
-  align-items: end;
-}
-.hero-panel {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
-  padding: 18px;
-}
-.hero-panel h2 {
-  margin-top: 8px;
-  font-size: 25px;
-}
-.hero-panel .facts {
-  display: grid;
-  gap: 10px;
-  margin-top: 18px;
-}
-.fact {
-  display: grid;
-  grid-template-columns: 118px minmax(0, 1fr);
-  gap: 12px;
-  padding-top: 10px;
-  border-top: 1px solid var(--line);
-}
-.fact:first-child { border-top: 0; padding-top: 0; }
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -188,7 +150,7 @@ pre {
 }
 .hero .actions { justify-content: flex-start; margin-top: 30px; }
 .flow-section {
-  padding: 12px 38px 54px;
+  padding: 12px 38px 34px;
 }
 .flow {
   max-width: 1160px;
@@ -226,127 +188,91 @@ pre {
 }
 .flow-card h3 { margin-top: 18px; }
 .flow-card p { margin-top: 8px; font-size: 13px; }
-.limit-strip {
+.limit-note {
   max-width: 1160px;
-  margin: 14px auto 0;
-  border: 1px solid #d9c47f;
-  border-radius: 8px;
-  background: var(--amber-soft);
-  padding: 14px 16px;
-  color: #564113;
+  margin: 16px auto 0;
+  font-size: 13px;
+  color: var(--muted);
 }
-.limit-strip strong { display: block; color: var(--ink); margin-bottom: 3px; }
-.story-wrap { padding: 8px 38px 64px; }
+.story-wrap { padding: 20px 38px 90px; }
 .story {
   max-width: 1160px;
   margin: auto;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: var(--surface);
+  background: #10140f;
+  color: #f3f5f0;
+  border-radius: 16px;
   overflow: hidden;
-  box-shadow: 0 22px 55px rgba(20, 29, 24, .10);
+  box-shadow: 0 30px 70px rgba(10, 15, 10, .35);
 }
-.appbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 14px 20px;
-  background: #fff;
-  border-bottom: 1px solid var(--line);
-}
-.appbrand {
-  font-size: 13px;
-  font-weight: 850;
-  letter-spacing: .05em;
-  text-transform: uppercase;
-}
-.network { color: var(--muted); font-size: 12px; }
 .case-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 220px;
   gap: 24px;
-  padding: 28px 30px 24px;
-  background: #fff;
+  padding: 36px 34px 28px;
 }
+.case-head .label { color: #9fe4bd; }
 .case-head h2 {
   max-width: 780px;
-  margin-top: 6px;
+  margin-top: 10px;
   font-size: clamp(30px, 4vw, 44px);
   line-height: 1.02;
+  color: #fff;
 }
 .case-head .subcopy {
   max-width: 760px;
-  margin-top: 12px;
-  color: var(--muted);
+  margin-top: 14px;
+  color: #b9c0b6;
   font-size: 15px;
   line-height: 1.55;
 }
-.agent { margin-top: 8px; color: var(--muted); word-break: break-all; }
 .status-box {
   align-self: start;
-  border: 1px solid #d7a5a0;
-  border-radius: 7px;
-  background: var(--red-soft);
-  padding: 15px;
+  border: 1px solid rgba(242, 168, 159, .35);
+  border-radius: 8px;
+  background: rgba(150, 58, 52, .16);
+  padding: 16px;
 }
 .status-box strong {
   display: block;
   margin-bottom: 8px;
-  color: var(--red);
+  color: #f2a89f;
   font-size: 12px;
   font-weight: 900;
   letter-spacing: .06em;
   text-transform: uppercase;
 }
 .status-box p {
-  color: #57231f;
+  color: #d7b8b4;
   font-size: 13px;
   line-height: 1.45;
 }
-.tag {
-  align-self: start;
-  border: 1px solid var(--line);
-  border-radius: 5px;
-  padding: 7px 9px;
-  color: var(--muted);
-  background: #fff;
-  font-size: 11px;
-  font-weight: 900;
-  letter-spacing: .06em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-.tag.ok { border-color: #9fb7d3; background: var(--blue-soft); color: var(--blue); }
-.tag.bad { border-color: #d7a5a0; background: var(--red-soft); color: var(--red); }
-.tag.warn { border-color: #d9c47f; background: var(--amber-soft); color: var(--amber); }
 .timeline {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  border-top: 1px solid var(--line);
-  border-bottom: 1px solid var(--line);
-  background: #fff;
+  border-top: 1px solid rgba(255, 255, 255, .08);
 }
 .event {
   min-height: 135px;
-  padding: 19px 21px;
-  border-right: 1px solid var(--line);
+  padding: 20px 22px;
+  border-right: 1px solid rgba(255, 255, 255, .08);
 }
 .event:last-child { border-right: 0; }
+.event .label { color: #7d8578; }
 .event strong {
   display: block;
-  margin-top: 9px;
+  margin-top: 8px;
   font-size: 18px;
   line-height: 1.2;
+  color: #fff;
 }
-.event p { margin-top: 5px; font-size: 13px; }
-.event.fail { background: var(--red-soft); }
-.event.fail .label { color: var(--red); }
+.event p { margin-top: 5px; font-size: 13px; color: #a3ab9d; }
+.event.fail { background: rgba(150, 58, 52, .18); }
+.event.fail .label { color: #f2a89f; }
 .story-body {
   display: grid;
-  grid-template-columns: 1.05fr .95fr;
+  grid-template-columns: 1fr;
   gap: 18px;
-  padding: 20px;
+  padding: 26px 34px 32px;
 }
 .panel {
   border: 1px solid var(--line);
@@ -368,36 +294,44 @@ pre {
 }
 .cell {
   min-height: 108px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--surface);
+  padding: 16px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .04);
+  border: 1px solid rgba(255, 255, 255, .08);
 }
-.cell.fail { border-color: #e3b9b4; background: var(--red-soft); }
-.cell strong { display: block; margin-top: 7px; font-size: 16px; line-height: 1.25; }
-.cell p { margin-top: 5px; font-size: 12px; }
+.cell .label { color: #7d8578; }
+.cell.fail { background: rgba(150, 58, 52, .16); border-color: rgba(242, 168, 159, .25); }
+.cell.fail .label { color: #f2a89f; }
+.cell strong { display: block; margin-top: 8px; font-size: 16px; line-height: 1.25; color: #fff; }
+.cell p { margin-top: 5px; font-size: 12px; color: #a3ab9d; }
 .check {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 14px;
-  margin-top: 14px;
-  padding-top: 15px;
-  border-top: 1px solid var(--line);
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, .08);
 }
-.check p { font-size: 13px; }
-.record-list { display: grid; }
-.record {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 16px 18px;
-  border-bottom: 1px solid var(--line);
+.check p { font-size: 13px; color: #b9c0b6; max-width: 460px; }
+.check button { background: var(--accent); border-color: var(--accent); color: #fff; }
+.story-body .panel { background: transparent; border: none; }
+.story-body .panel-head { padding: 0; border-bottom: none; }
+.story-body .panel-head .label { color: #9fe4bd; }
+.story-body .panel-head h3 { color: #fff; }
+.story-body .panel-head p { color: #b9c0b6; }
+.story-body .panel-body { padding: 20px 0 0; }
+.story-body .result {
+  background: rgba(255, 255, 255, .04);
+  border-color: rgba(255, 255, 255, .1);
+  color: #b9c0b6;
 }
-.record:last-child { border-bottom: 0; }
-.record strong { display: block; font-size: 15px; }
-.record p { margin-top: 3px; font-size: 12px; }
-.record a { align-self: center; color: var(--blue); font-size: 13px; font-weight: 800; white-space: nowrap; }
+.story-body .result strong { color: #fff; }
+.story-body .result.ok { background: rgba(31, 138, 92, .16); border-color: rgba(31, 138, 92, .35); }
+.story-body .result.bad { background: rgba(150, 58, 52, .18); border-color: rgba(242, 168, 159, .3); color: #eccac5; }
+.story-body .result.warn { background: rgba(217, 196, 127, .14); border-color: rgba(217, 196, 127, .35); color: #e4cf98; }
+.story-body .result.warn strong { color: #f6ecc9; }
+.story-body pre { border-color: rgba(255, 255, 255, .12); }
 .live-section {
   padding: 58px 38px;
   background: var(--surface);
@@ -412,31 +346,11 @@ pre {
   margin-bottom: 18px;
 }
 .section-title p { max-width: 470px; }
-.status-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 12px;
-  margin-bottom: 18px;
-}
-.metric {
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: #fff;
-  padding: 16px;
-}
-.metric-head {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: flex-start;
-}
-.metric-value { margin-top: 8px; font-size: 24px; line-height: 1.1; word-break: break-word; }
 .grid {
   display: grid;
-  grid-template-columns: 1.06fr .94fr;
+  grid-template-columns: 1fr;
   gap: 16px;
 }
-.field { display: grid; gap: 6px; margin-top: 12px; }
 .result {
   margin-top: 14px;
   border: 1px solid var(--line);
@@ -466,8 +380,9 @@ footer {
   color: var(--muted);
   font-size: 13px;
 }
+footer .footlinks { display: flex; gap: 16px; }
 @media (max-width: 900px) {
-  .hero-grid, .story-body, .grid, .status-grid, .flow-grid { grid-template-columns: 1fr; }
+  .story-body, .status-grid, .flow-grid { grid-template-columns: 1fr; }
   .case-head { grid-template-columns: 1fr; }
   .timeline { grid-template-columns: 1fr; }
   .event { min-height: 0; border-right: 0; border-bottom: 1px solid var(--line); }
@@ -477,22 +392,19 @@ footer {
 @media (max-width: 640px) {
   .page { width: calc(100% - 16px); margin: 8px auto; border-radius: 12px; }
   .topbar, footer { align-items: flex-start; flex-direction: column; padding: 19px; }
-  .topbar, .navlinks, .hero-grid, .hero-grid > *, .story, .story-body, .panel, .shell, .section-title, .section-title p, .flow, .flow-head, .flow-head p { min-width: 0; max-width: 100%; }
+  .topbar, .navlinks, .story, .story-body, .panel, .shell, .section-title, .section-title p, .flow, .flow-head, .flow-head p { min-width: 0; max-width: 100%; }
   .navlinks { gap: 13px; }
   .hero { padding: 46px 20px 30px; text-align: left; }
   h1 { font-size: 37px; }
   .lede { margin-left: 0; font-size: 16px; }
-  .hero-panel { padding: 15px; }
-  .fact { grid-template-columns: 1fr; gap: 4px; }
   .hero .actions, .actions { justify-content: start; }
   button, .button { width: 100%; }
   .story-wrap, .live-section, .flow-section { padding-left: 13px; padding-right: 13px; }
   .case-head { align-items: start; flex-direction: column; padding: 20px; }
   .case-head h2 { font-size: 25px; }
-  .case-head .subcopy, .agent, .status-box, .event p, .check p { max-width: 100%; }
+  .case-head .subcopy, .event p, .check p { max-width: 100%; }
   .comparison { grid-template-columns: 1fr; }
-  .check, .record { align-items: stretch; flex-direction: column; }
-  .record a { white-space: normal; }
+  .check { align-items: stretch; flex-direction: column; }
   .row { grid-template-columns: 1fr; gap: 4px; }
 }
 </style>
@@ -504,34 +416,16 @@ footer {
     <nav class="navlinks" aria-label="Primary">
       <a href="#history">Proof history</a>
       <a href="#live">Run paid check</a>
-      <a href="/arc-certificate.html">Certificate page</a>
-      <a href="https://github.com/Sireadell/halflife" target="_blank" rel="noopener">GitHub</a>
     </nav>
   </header>
 
   <main id="top">
     <section class="hero">
-      <div class="hero-grid">
-        <div>
-          <div class="eyebrow">Agent certification on Arc</div>
-          <h1>Halflife certifies AI agents, then takes the certificate away if they get worse.</h1>
-          <p class="lede">Most agent tests happen once. Halflife keeps the history alive: test the agent, publish the certificate to Arc, check it again later, and revoke the certificate when the agent no longer holds up.</p>
-          <div class="actions">
-            <a class="button" href="#live">Run a paid check</a>
-            <a class="button secondary" href="#history">See real proof</a>
-            <button class="secondary" id="verify-arc">Verify Arc proof</button>
-          </div>
-        </div>
-        <aside class="hero-panel" aria-label="Halflife summary">
-          <span class="label">What this is</span>
-          <h2>A public reliability record for owner-controlled agents.</h2>
-          <div class="facts">
-            <div class="fact"><span class="key mono">Test</span><p>Run adversarial checks against an agent the owner controls.</p></div>
-            <div class="fact"><span class="key mono">Publish</span><p>Write issue and revoke events to Arc mainnet.</p></div>
-            <div class="fact"><span class="key mono">Recheck</span><p>Compare later behavior with the original result.</p></div>
-            <div class="fact"><span class="key mono">Revoke</span><p>Leave a visible record when the agent slips.</p></div>
-          </div>
-        </aside>
+      <h1>Halflife certifies AI agents, then takes the certificate away if they get worse.</h1>
+      <p class="lede">Most agent tests happen once. Halflife keeps the history alive: test the agent, publish the certificate to Arc, check it again later, and revoke the certificate when the agent no longer holds up.</p>
+      <div class="actions">
+        <a class="button" href="#live">Run a paid check</a>
+        <a class="button secondary" href="#history">See real proof</a>
       </div>
     </section>
 
@@ -550,22 +444,17 @@ footer {
           <article class="flow-card"><span class="step-num">3</span><h3>Arc stores the certificate</h3><p>When the agent passes, Halflife writes the certificate fingerprint to Arc mainnet so the record is not just our database.</p></article>
           <article class="flow-card"><span class="step-num">4</span><h3>Later checks can revoke it</h3><p>If the agent gets worse, Halflife writes the revoke record to Arc and the public history changes from certified to revoked.</p></article>
         </div>
+        <p class="limit-note"><strong>Current limit:</strong> today this is for agents whose owners can prove control. Vetting a stranger's agent without cooperation is a harder problem and not claimed here.</p>
       </div>
-      <div class="limit-strip"><strong>Current limit</strong>Today this is for agents whose owners can prove control. Vetting a stranger's agent without cooperation is a harder problem and not claimed here.</div>
     </section>
 
     <section class="story-wrap" id="history">
       <article class="story" aria-label="Public certificate history for the Arc day 3 demo agent">
-        <div class="appbar">
-          <span class="appbrand">Halflife / Real Arc history</span>
-          <span class="network">Arc mainnet, chain 5042</span>
-        </div>
         <div class="case-head">
           <div>
             <span class="label">Verified demonstration record</span>
             <h2>This agent passed once. Halflife caught it slipping later.</h2>
             <p class="subcopy">The same agent first rejected bad input, then returned a success-shaped answer to input it should have refused. Halflife wrote both moments to Arc.</p>
-            <p class="agent mono">arc-day3-demo-agent · 0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53</p>
           </div>
           <div class="status-box">
             <strong>Certificate revoked</strong>
@@ -611,33 +500,13 @@ footer {
               </div>
               <div class="check">
                 <p>This is a real Arc demo record. It proves Halflife can publish both the original certificate and the revocation.</p>
-                <a class="button secondary" href="/demo/arc-proof/verify">Verify both records</a>
+                <button class="secondary" id="verify-history">Verify both records</button>
               </div>
               <div id="arc-summary" class="result warn">
                 <strong>Ready to verify</strong>
                 Use the button above to ask Halflife to check both Arc records.
               </div>
-              <pre id="arc-verify-result">Full app response will appear here.</pre>
-            </div>
-          </section>
-          <section class="panel">
-            <div class="panel-head">
-              <span class="label">Records on Arc</span>
-              <h3>Open the proof yourself.</h3>
-            </div>
-            <div class="record-list">
-              <div class="record">
-                <div><strong>Certificate issued</strong><p>September 20, 2026, 10:40:49 UTC</p></div>
-                <a href="https://arc.etherscan.io/tx/0xe21574e8463509ab806bc62af60eac34f9276b584da663adbf4adb3d1565b866" target="_blank" rel="noopener">Open record</a>
-              </div>
-              <div class="record">
-                <div><strong>Certificate revoked</strong><p>September 20, 2026, 10:40:52 UTC</p></div>
-                <a href="https://arc.etherscan.io/tx/0x9ec75646190b84a566f6f279bcf21678f78a3d3e310b2f896a691e051876f95b" target="_blank" rel="noopener">Open record</a>
-              </div>
-              <div class="record">
-                <div><strong>Latest paid run</strong><p>Saved result and payment proof</p></div>
-                <a href="/demo/certify/paid/latest">Open proof</a>
-              </div>
+              <pre id="arc-verify-result" hidden></pre>
             </div>
           </section>
         </div>
@@ -651,85 +520,29 @@ footer {
             <span class="label">Try the live path</span>
             <h2>Pay, run, then inspect the record.</h2>
           </div>
-          <p>This page is wired to the real Halflife routes. You can verify the existing Arc proof, check whether payment is enabled, and run the paid certification path from here.</p>
-        </div>
-
-        <div class="status-grid" aria-label="Current app status">
-          <div class="metric">
-            <div class="metric-head"><span class="key mono">App health</span><span id="service-tag" class="tag warn">Checking</span></div>
-            <div id="service-state" class="metric-value">Checking</div>
-          </div>
-          <div class="metric">
-            <div class="metric-head"><span class="key mono">Paid route</span><span id="arc-tag" class="tag warn">Checking</span></div>
-            <div id="arc-state" class="metric-value">Checking</div>
-          </div>
-          <div class="metric">
-            <div class="metric-head"><span class="key mono">Price shown by app</span><span id="wallet-tag" class="tag warn">Wallet off</span></div>
-            <div id="price" class="metric-value">Checking</div>
-          </div>
+          <p>This page is wired to the real Halflife routes. Connect a wallet and run the paid certification path against Halflife's own demo agent.</p>
         </div>
 
         <div class="grid">
           <section class="panel">
             <div class="panel-head">
               <span class="label">Run a paid check</span>
-              <h3>Use the demo agent or paste another agent endpoint.</h3>
+              <h3 id="pay-price-note">Runs against Halflife's own demo agent.</h3>
             </div>
             <div class="panel-body">
-              <div class="field">
-                <label for="target-url" class="key mono">Agent API URL</label>
-                <input id="target-url" autocomplete="off">
-              </div>
-              <div class="field">
-                <label for="agent-address" class="key mono">Agent Arc wallet</label>
-                <input id="agent-address" autocomplete="off">
-              </div>
-              <div class="field">
-                <label for="sample-body" class="key mono">Sample request body</label>
-                <textarea id="sample-body" spellcheck="false"></textarea>
-              </div>
               <div id="wallet-status" class="result warn">
                 <strong>Wallet not connected</strong>
                 Connect a wallet with Arc USDC to pay and run the check.
               </div>
-              <div class="result">
-                <strong>Connected wallet</strong>
-                <span id="connected-wallet" class="mono">Not connected</span>
-              </div>
               <div class="actions">
                 <button id="connect-wallet">Connect wallet</button>
                 <button id="pay-live">Pay and run live check</button>
-                <button class="secondary" id="check-no-pay">Check setup without paying</button>
-                <button class="secondary" id="copy-request">Copy request</button>
               </div>
               <div id="paid-summary" class="result warn">
                 <strong>Ready</strong>
-                Use the paid button for the real run. Use setup check only to see whether the server is ready before charging.
+                Use the button above for the real run.
               </div>
-              <pre id="paid-route-result">Full app response will appear here.</pre>
-            </div>
-          </section>
-
-          <section class="panel">
-            <div class="panel-head">
-              <span class="label">Operational checks</span>
-              <h3>What you can check yourself, without trusting our word for it.</h3>
-            </div>
-            <div class="panel-body">
-              <div class="actions" style="margin-top:0">
-                <button class="secondary" id="refresh-status">Refresh status</button>
-                <button class="secondary" id="refresh-paid">Refresh latest proof</button>
-                <a class="button secondary" href="/about">Open app status</a>
-                <a class="button secondary" href="/arc-certificate.html">Open certificate page</a>
-              </div>
-              <div id="status-result" class="result warn">
-                <strong>Waiting for the first check</strong>
-                The page runs this check when it opens.
-              </div>
-              <div id="paid-run" class="result warn">
-                <strong>Checking latest paid proof</strong>
-                The page is looking for the latest saved paid run.
-              </div>
+              <pre id="paid-route-result" hidden></pre>
             </div>
           </section>
         </div>
@@ -739,7 +552,10 @@ footer {
 
   <footer>
     <span class="mono">Halflife on Arc mainnet</span>
-    <span>Certificates stay accountable after the first pass.</span>
+    <span class="footlinks">
+      <a href="/arc-certificate.html">Certificate page</a>
+      <a href="https://github.com/Sireadell/halflife" target="_blank" rel="noopener">GitHub</a>
+    </span>
   </footer>
 </div>
 
