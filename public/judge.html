@@ -134,7 +134,6 @@ h1 {
   padding: 32px;
   text-align: center;
 }
-.run-result[hidden] { display: none; }
 .run-badge {
   display: inline-flex;
   align-items: center;
@@ -149,6 +148,8 @@ h1 {
 }
 .run-result.bad .run-badge { background: var(--bad-soft); color: var(--bad); }
 .run-result.warn .run-badge { background: var(--warn-soft); color: var(--warn); }
+.run-result.idle .run-badge { background: #EFEADF; color: var(--muted); }
+.run-result.idle #run-sentence { color: var(--muted); }
 .run-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
 #run-sentence { font-size: 16px; line-height: 1.6; color: #322F27; }
 #run-link-wrap { margin-top: 18px; }
@@ -267,9 +268,15 @@ footer { margin-top: 56px; font-size: 12px; color: var(--quiet); text-align: cen
     <p>Before Halflife will run rough tests against any address, it has to know the requester actually controls that server, or it could be turned into a tool for attacking strangers. That proof takes one extra step an owner does once. The agent below is ours, so we've already done it.</p>
   </details>
 
-  <div id="run-result" class="run-result" hidden>
-    <div class="run-badge"><span class="dot"></span><span id="run-verdict" class="mono">—</span></div>
-    <div id="run-sentence"></div>
+  <!-- Same slot the mockup always showed with an example result, kept in
+       place rather than hidden, so the page doesn't rearrange itself once a
+       run finishes. Starts on an honest "nothing has run yet" state instead
+       of the mockup's illustrative RESILIENT example, since showing a fake
+       result before any real test happened would be exactly the kind of
+       claim this product exists to catch other agents making. -->
+  <div id="run-result" class="run-result idle">
+    <div class="run-badge"><span class="dot"></span><span id="run-verdict" class="mono">No test run yet</span></div>
+    <div id="run-sentence">Click the button above to see a real result here.</div>
     <div id="run-link-wrap" hidden><a id="run-link" target="_blank" rel="noopener">See the proof on Arc's own explorer ↗</a></div>
   </div>
 
