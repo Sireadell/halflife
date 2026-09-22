@@ -299,11 +299,16 @@ export function createPaidStressProofClient({
       const txHash = settlementTxHash(settlement);
 
       if (!paid.ok) {
-        const body = await readJson(paid);
+        // Same class of bug as readChallenge above: a rejection here also
+        // carries its real reason in the `payment-required` header, not the
+        // JSON body, which comes back empty. Reusing readChallenge means this
+        // failure path stops reporting "no reason given" for a rejection that
+        // actually said something.
+        const reason = await readChallenge(paid);
         return failed(
           target,
           'starting the paid run',
-          `HTTP ${paid.status}: ${body?.error ?? 'no reason given'}`,
+          `HTTP ${paid.status}: ${reason?.error ?? reason?.reason ?? 'no reason given'}`,
           { runId, txHash, mayHaveSpent: true },
         );
       }
