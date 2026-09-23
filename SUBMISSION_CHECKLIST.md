@@ -5,8 +5,8 @@
 - [x] Existing Arc memo proof remains in place.
 - [x] ERC-8004 issue and revoke feedback are implemented against Arc's canonical registries.
 - [x] Final automated checks pass: `npm run build:judge` and `npm test`.
-- [ ] Push this completed commit to the public repository.
-- [ ] Confirm the public deployment serves the new commit.
+- [x] Push this completed commit to the public repository.
+- [x] Confirm the public deployment serves the new commit.
 - [ ] Complete one paid Arc mainnet run that shows ERC-8004 feedback on-chain.
 - [ ] Add the deployed project link, public repository link, short description and builder profile to the official Arc Microgrants form.
 
