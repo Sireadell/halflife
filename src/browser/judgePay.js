@@ -372,7 +372,7 @@ async function loadAbout() {
     const arc = data.arcPaidDemo?.payment;
     const priceNote = byId('pay-price-note');
     if (priceNote) {
-      const amount = arc?.price?.amount || '0.10';
+      const amount = arc?.price?.amount || '0.01';
       const currency = arc?.price?.currency || 'USDC';
       priceNote.textContent = arc?.enabled
         ? `Runs against Halflife's own demo agent for ${amount} ${currency}.`
@@ -432,7 +432,7 @@ async function payAndRun() {
       return;
     }
 
-    const priceUsdc = arcPayment.price?.amount ?? '0.10';
+    const priceUsdc = arcPayment.price?.amount ?? '0.01';
     const requiredAtomicAmount = parseUnits(priceUsdc, 6);
 
     setResult('paid-summary', 'Checking Gateway balance', 'Making sure enough Arc USDC is deposited with Circle before paying.');
