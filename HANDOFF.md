@@ -1,5 +1,82 @@
 # Handoff: Halflife (Sibyl Labs hackathon entry)
 
+## Current handoff, 2026-09-23
+
+### Arc Microgrants submission state
+
+Halflife is the active Arc Microgrants project. The official deadline is
+2026-10-14 23:59 ET. The public repo is
+`https://github.com/Sireadell/halflife` and the live judge entry point is
+`https://halflife-b0o4.onrender.com/judge.html`.
+
+The official submission portal is
+`https://dorahacks.io/hackathon/arc-microgrants`. It requires a working Arc
+mainnet deployment, public repository, short project description and public
+builder profile. The project meets the deployment and repository requirements.
+It still needs the founder to sign into DoraHacks, review the form, and confirm
+the final external submission action.
+
+`SUBMISSION_CHECKLIST.md` is the current source of truth for submission tasks.
+It records two remaining items:
+
+- A new paid Arc mainnet run that creates ERC-8004 feedback on-chain. This is
+  strongly recommended proof for judges but requires an approved real payment.
+- The DoraHacks form submission.
+
+### ERC-8004 Arc work completed
+
+Commits `58b9abc` and `3c186cf` are pushed to `master`. The live Render
+deployment was checked after the push: `/health` and `/about` return 200, and
+the live `judge.html` and `judge-pay.js` include the ERC-8004 proof UI.
+
+Implemented:
+
+- `src/lib/erc8004.js` uses Arc's canonical ERC-8004 Identity and Reputation
+  registries and verifies them before writing.
+- The existing Arc memo proof remains unchanged. Measured issue and revoke
+  results now also write ERC-8004 feedback.
+- A revoke calls `revokeFeedback()` for the prior feedback before writing the
+  lower replacement feedback.
+- Unmeasured results, missing report hashes and unchanged certificates make no
+  ERC-8004 write.
+- Registry failures are returned honestly without crashing certification.
+- Agent records, paid result JSON and the judge page surface ERC-8004 details.
+
+Verification completed: `npm run build:judge`, `npm test` with 156/156 passing,
+`git diff --check`, no-em-dash scan, and live read-only Arc RPC registry checks.
+No new paid ERC-8004 transaction has been sent.
+
+### Current judge-page UX
+
+The live page was reviewed at a 390 by 844 mobile size. It has no horizontal
+overflow and clearly explains the issue then revoke story. The one small UX
+fix worth making before final submission is to show the exact Arc USDC price
+beside the `Pay and run live check` action, plus one sentence saying what the
+payment triggers. The live `/about` endpoint currently reports the visitor
+price as 0.01 USDC.
+
+### Proposed next build, not yet started
+
+The founder wants a visitor to experience a certificate being issued and then
+revoked in one live guided demonstration. Do not fake a result or reuse a
+global mutable demo state.
+
+Recommended design:
+
+- One clearly priced payment covers two real checks.
+- The first check uses a controlled Halflife demonstration agent in its passing
+  state and writes the certificate plus ERC-8004 feedback.
+- The visitor then chooses a plainly labelled controlled failure step.
+- The same agent is rechecked in its planned failing state, causing real
+  ERC-8004 feedback revocation and a new lower feedback record.
+- The page shows the transaction links and a live issue-to-revoke timeline.
+- Isolate each visitor through a leased, pre-registered pool of demo agent
+  identities. This avoids two visitors revoking one another's records.
+
+The guided demo is a meaningful build. It needs session handling, controlled
+demo-agent modes, a two-run payment route, identity leasing, progress states,
+and tests. It has not been implemented or approved for spending yet.
+
 Last updated 2026-09-02. Read this first, then README.md.
 
 ## Open TODO (added 2026-09-10, not yet actioned)
