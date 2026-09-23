@@ -56,6 +56,7 @@ import { certifyOnArc } from './lib/arcCertifier.js';
 import { createArcDemoPaymentGate } from './lib/arcDemoPaymentGate.js';
 import { buildPaidArcDemoSnapshot, createArcDemoResultStore } from './lib/arcDemoResultStore.js';
 import { createArcProofVerifier } from './lib/arcProofVerifier.js';
+import { createUpstreamFundingCheck } from './lib/upstreamFunding.js';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -244,6 +245,7 @@ export function createApp({
   certifyOnArcFn = certifyOnArc,
   arcDemoResultStore = createArcDemoResultStore({ env }),
   arcProofVerifier = createArcProofVerifier({ env }),
+  canAffordOneRun = createUpstreamFundingCheck({ paidConfig: resolvePaidConfig(env) }),
   clock = () => new Date().toISOString(),
 } = {}) {
   if (!certifier || !registry) {
@@ -464,7 +466,34 @@ export function createApp({
     next();
   };
 
-  const paidArcDemoMiddlewares = [validatePaidArcDemo];
+  /**
+   * The order here is the whole point.
+   *
+   * The payment middleware takes the visitor's money as the request passes
+   * through it, and the handler that spends halflife's own wallet on the
+   * StressProof run does not execute until after that. So this sits in front
+   * of the payment middleware, not inside the handler: by the time the handler
+   * could notice the problem, the visitor has already paid for a run that
+   * cannot happen.
+   */
+  const refuseIfUpstreamUnaffordable = async (_req, res, next) => {
+    let verdict;
+    try {
+      verdict = await canAffordOneRun();
+    } catch {
+      // The check failing is not evidence that the run would fail. Left open
+      // on purpose, which is no worse than before this check existed.
+      return next();
+    }
+    if (verdict.ok) return next();
+
+    return res.status(503).json({
+      ...paidArcDemoRefusal('halflife cannot buy the test run right now', verdict.reason),
+      error: verdict.reason,
+    });
+  };
+
+  const paidArcDemoMiddlewares = [validatePaidArcDemo, refuseIfUpstreamUnaffordable];
   if (paidArcDemoGate.middleware && arcClients) paidArcDemoMiddlewares.push(paidArcDemoGate.middleware);
 
   app.post('/demo/certify/paid', ...paidArcDemoMiddlewares, async (req, res) => {

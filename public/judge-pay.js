@@ -26972,7 +26972,11 @@ function summarizePaidResponse(status, body, headers) {
   if (status >= 500 || text.includes("not configured") || text.includes("private key") || text.includes("arc writing")) {
     return {
       title: "Stopped before charging",
-      body: "The server refused before payment because a required Arc setting is missing.",
+      // The server says which refusal this is. Guessing "a setting is missing"
+      // is wrong for the common case where halflife simply cannot afford the
+      // upstream run, and that difference matters to someone deciding whether
+      // to wait or give up.
+      body: plainBodyText(body) || "The server refused before taking payment. Nothing was charged.",
       state: "warn"
     };
   }

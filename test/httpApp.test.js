@@ -55,6 +55,7 @@ async function withApp(
     certifyOnArcFn,
     arcDemoResultStore,
     arcProofVerifier,
+    canAffordOneRun,
   } = {},
   fn,
 ) {
@@ -75,6 +76,7 @@ async function withApp(
     ...(certifyOnArcFn ? { certifyOnArcFn } : {}),
     ...(arcDemoResultStore ? { arcDemoResultStore } : {}),
     ...(arcProofVerifier ? { arcProofVerifier } : {}),
+    ...(canAffordOneRun ? { canAffordOneRun } : {}),
   });
 
   const server = app.listen(0);
@@ -416,6 +418,98 @@ test('the paid Arc demo validates input before payment middleware runs', async (
       assert.equal(body.arcWritten, false);
       assert.match(body.summary, /refused before charging/);
       assert.equal(middlewareCalled, false, 'bad input must not reach payment');
+    },
+  );
+});
+
+test('a run halflife cannot afford upstream is refused before the visitor is charged', async () => {
+  // The failure this prevents happened live: the visitor paid, and only then
+  // did halflife find it could not buy the StressProof run. The assertion that
+  // matters is not the status code, it is that the payment middleware never
+  // ran at all.
+  let paymentMiddlewareCalled = false;
+  let certifyCalled = false;
+
+  const paidArcDemoGate = {
+    mode: 'live',
+    enabled: true,
+    config: { network: 'eip155:5042', priceUsdc: '0.01', payTo: '0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53' },
+    middleware: (_req, _res, next) => {
+      paymentMiddlewareCalled = true;
+      next();
+    },
+    reason: null,
+  };
+
+  await withApp(
+    {
+      paidArcDemoGate,
+      arcClients: { fake: true },
+      certifyOnArcFn: async () => {
+        certifyCalled = true;
+        return {};
+      },
+      canAffordOneRun: async () => ({
+        ok: false,
+        checked: true,
+        reason: 'Halflife has 0.002 USDC deposited with Circle on Arc and one run costs 0.005 USDC.',
+      }),
+    },
+    async ({ call }) => {
+      const { status, body } = await call('POST', '/demo/certify/paid', {
+        targetUrl: 'https://agent.example/v1/chat',
+        agentAddress: '0x7a3f19e0b6d4c9a2f0e1b8d3a5c7e9f0b1d2c281',
+        sampleBody: { q: 1 },
+      });
+
+      assert.equal(status, 503);
+      assert.equal(paymentMiddlewareCalled, false, 'the visitor must never reach the payment step');
+      assert.equal(certifyCalled, false);
+      assert.equal(body.charged, false);
+      assert.equal(body.checked, false);
+      assert.match(body.error, /0\.005 USDC/);
+    },
+  );
+});
+
+test('an affordable run still reaches payment as normal', async () => {
+  let paymentMiddlewareCalled = false;
+  const paidArcDemoGate = {
+    mode: 'live',
+    enabled: true,
+    config: { network: 'eip155:5042', priceUsdc: '0.01', payTo: '0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53' },
+    middleware: (_req, _res, next) => {
+      paymentMiddlewareCalled = true;
+      next();
+    },
+    reason: null,
+  };
+
+  await withApp(
+    {
+      paidArcDemoGate,
+      arcClients: { fake: true },
+      canAffordOneRun: async () => ({ ok: true, checked: true }),
+      certifyOnArcFn: async () => ({
+        target: 'https://agent.example/v1/chat',
+        checkedAt: '2026-09-23T12:00:00.000Z',
+        measured: true,
+        standing: STANDING.VALID,
+        currentVerdict: 'RESILIENT',
+        arc: { written: true, event: 'issued', txHash: '0xarc' },
+        current: { reportHash: '0xreport' },
+      }),
+      arcDemoResultStore: { async read() { return null; }, async write(s) { return s; } },
+    },
+    async ({ call }) => {
+      const { status, body } = await call('POST', '/demo/certify/paid', {
+        targetUrl: 'https://agent.example/v1/chat',
+        agentAddress: '0x7a3f19e0b6d4c9a2f0e1b8d3a5c7e9f0b1d2c281',
+        sampleBody: { q: 1 },
+      });
+      assert.equal(status, 200);
+      assert.equal(paymentMiddlewareCalled, true, 'an affordable run must not be blocked');
+      assert.equal(body.checked, true);
     },
   );
 });
