@@ -65,7 +65,16 @@ if (process.env.DRY_RUN) {
 }
 if (balance < cost) throw new Error(`Owner needs at least ${formatUnits(cost, 18)} USDC for gas.`);
 
-const txHash = await walletClient.writeContract(request);
+// viem's default fee cap is twice the base fee, and the node refuses any
+// transaction whose worst case exceeds the balance. Arc's base fee sits at its
+// floor, so a cap just above the current price lets a small wallet pay.
+const block = await publicClient.getBlock();
+const maxPriorityFeePerGas = gasPrice > block.baseFeePerGas ? gasPrice - block.baseFeePerGas : 0n;
+const maxFeePerGas = (gasPrice * 110n) / 100n;
+if (gas * maxFeePerGas > balance) {
+  throw new Error(`Owner needs at least ${formatUnits(gas * maxFeePerGas, 18)} USDC at the capped fee.`);
+}
+const txHash = await walletClient.writeContract({ ...request, gas, maxFeePerGas, maxPriorityFeePerGas });
 const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
 if (receipt.status !== 'success') throw new Error(`register ${txHash} reverted`);
 console.log('registered tx', txHash);
