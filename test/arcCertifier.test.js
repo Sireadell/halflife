@@ -109,12 +109,14 @@ test('a first certification writes ERC-8004 feedback with the verdict, URI and h
       arcClients: { account: { address: HALFLIFE_ADDRESS } },
       memory,
       erc8004: recordingErc8004(ercCalls),
+      erc8004AgentIdFor: () => '7',
       writeMemo: recordingWriteMemo(memoCalls),
     },
     { targetUrl: 'https://example.com/agent', agentAddress: AGENT_ADDRESS },
   );
 
   const feedback = ercCalls.find((call) => call.method === 'giveFeedback');
+  assert.equal(ercCalls.some((call) => call.method === 'registerAgent'), false);
   assert.equal(result.arc.erc8004.written, true);
   assert.equal(result.arc.erc8004.agentId, '7');
   assert.equal(result.arc.erc8004.feedbackIndex, '3');
@@ -319,6 +321,7 @@ test('an ERC-8004 registry failure does not fail the Arc certification result', 
       arcClients: { account: { address: HALFLIFE_ADDRESS } },
       memory: fakeMemory({ target: 'https://example.com/agent' }),
       erc8004: recordingErc8004([], { giveFeedback: new Error('registry unavailable') }),
+      erc8004AgentIdFor: () => '7',
       writeMemo: recordingWriteMemo([]),
     },
     { targetUrl: 'https://example.com/agent', agentAddress: AGENT_ADDRESS },
@@ -327,6 +330,33 @@ test('an ERC-8004 registry failure does not fail the Arc certification result', 
   assert.equal(result.arc.written, true);
   assert.equal(result.arc.erc8004.written, false);
   assert.match(result.arc.erc8004.reason, /registry unavailable/);
+});
+
+test('an agent with no known ERC-8004 id is never registered by Halflife, because the registry refuses self-feedback', async () => {
+  const ercCalls = [];
+  const result = await certifyOnArc(
+    {
+      certifier: fakeCertifier({
+        drift: DRIFT.FIRST_CERTIFICATION,
+        certificateStatus: CERTIFICATE.VALID,
+        revoked: false,
+        measured: true,
+        current: { verdict: 'RESILIENT', score: 100, reportHash: REPORT_HASH },
+        previous: null,
+      }),
+      arcClients: { account: { address: HALFLIFE_ADDRESS } },
+      memory: fakeMemory({ target: 'https://example.com/agent' }),
+      erc8004: recordingErc8004(ercCalls),
+      erc8004AgentIdFor: () => null,
+      writeMemo: recordingWriteMemo([]),
+    },
+    { targetUrl: 'https://example.com/agent', agentAddress: AGENT_ADDRESS },
+  );
+
+  assert.equal(result.arc.written, true);
+  assert.equal(result.arc.erc8004.written, false);
+  assert.match(result.arc.erc8004.reason, /no ERC-8004 identity/);
+  assert.equal(ercCalls.length, 0);
 });
 
 test('an ERC-8004 client setup failure is reported without crashing certification', async () => {

@@ -16,14 +16,14 @@
 
 import { DRIFT, CERTIFICATE } from './drift.js';
 import { writeCertificateMemo } from './arcMemo.js';
-import { ARC_EXPLORER_TX, ERC8004_AGENT_REGISTRY, createErc8004 } from './erc8004.js';
+import { ARC_EXPLORER_TX, ERC8004_AGENT_REGISTRY, createErc8004, resolveKnownAgentId } from './erc8004.js';
 
 /**
- * @param {{ certifier: import('./certifier.js').Certifier, arcClients: object, memory?: object, erc8004?: object, writeMemo?: typeof writeCertificateMemo }} deps
+ * @param {{ certifier: import('./certifier.js').Certifier, arcClients: object, memory?: object, erc8004?: object, erc8004AgentIdFor?: (targetUrl: string) => string | null, writeMemo?: typeof writeCertificateMemo }} deps
  * @param {{ targetUrl: string, agentAddress: string, request?: object }} params
  */
 export async function certifyOnArc(
-  { certifier, arcClients, memory, erc8004, writeMemo = writeCertificateMemo },
+  { certifier, arcClients, memory, erc8004, erc8004AgentIdFor = resolveKnownAgentId, writeMemo = writeCertificateMemo },
   { targetUrl, agentAddress, request = {} },
 ) {
   if (typeof agentAddress !== 'string' || !/^0x[0-9a-fA-F]{40}$/.test(agentAddress)) {
@@ -58,6 +58,7 @@ export async function certifyOnArc(
     action,
     arcClients,
     erc8004,
+    agentIdFor: erc8004AgentIdFor,
     memory,
     result,
     targetUrl,
@@ -83,7 +84,7 @@ function describeNoWrite(result) {
   return `No Arc write: drift was ${result.drift} and the certificate is already ${result.certificateStatus} on chain, so there is nothing new to record.`;
 }
 
-async function writeErc8004Feedback({ action, arcClients, erc8004, memory, result, targetUrl }) {
+async function writeErc8004Feedback({ action, arcClients, erc8004, agentIdFor, memory, result, targetUrl }) {
   if (!memory) {
     return {
       written: false,
@@ -100,9 +101,17 @@ async function writeErc8004Feedback({ action, arcClients, erc8004, memory, resul
     const currentRecord = await memory.recallCertification(targetUrl);
     const previousErc = result.previous?.erc8004 ?? null;
     const existingErc = currentRecord?.erc8004 ?? previousErc ?? null;
-    const registered = existingErc?.agentId
-      ? { agentId: existingErc.agentId, txHash: existingErc.registerTxHash ?? null, reused: true }
-      : { ...(await client.registerAgent(targetUrl)), reused: false };
+    // The owner-supplied id wins over a stored one, so correcting the
+    // configuration is enough to move an agent to its real identity.
+    const agentId = agentIdFor(targetUrl) ?? existingErc?.agentId ?? null;
+    if (!agentId) {
+      return {
+        written: false,
+        reason:
+          'ERC-8004 feedback was skipped because this agent has no ERC-8004 identity Halflife knows of. The agent owner registers it; Halflife only rates it, since the registry refuses feedback from the agent owner itself.',
+      };
+    }
+    const registered = { agentId, txHash: existingErc?.agentId === agentId ? (existingErc.registerTxHash ?? null) : null };
 
     await rememberErc8004(memory, targetUrl, {
       ...(existingErc ?? {}),

@@ -101,6 +101,28 @@ export function resolveErc8004Addresses(env = process.env) {
 }
 
 /**
+ * Which ERC-8004 agent id belongs to a tested URL, from
+ * HALFLIFE_ERC8004_AGENT_IDS (a JSON object of targetUrl to agentId).
+ *
+ * Halflife never registers the agents it rates. Arc's Reputation Registry
+ * refuses feedback from an agent's own owner ("Self-feedback not allowed"), so
+ * an agent Halflife registered is an agent Halflife can never rate. The owner
+ * registers; Halflife is told the id and only ever gives feedback.
+ */
+export function resolveKnownAgentId(targetUrl, env = process.env) {
+  const raw = env.HALFLIFE_ERC8004_AGENT_IDS;
+  if (!raw || typeof targetUrl !== 'string') return null;
+  let map;
+  try {
+    map = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  const id = map?.[targetUrl.trim()];
+  return id === undefined || id === null || !/^\d+$/.test(String(id)) ? null : String(id);
+}
+
+/**
  * The viem helpers load only when the live client is built, so tests can import
  * this file without pulling in signing code.
  */
@@ -182,24 +204,30 @@ export async function createErc8004({
 
     async giveFeedback({ agentId, value, valueDecimals, tag1, tag2, endpoint, feedbackURI, feedbackHash }) {
       await verifyRegistries();
-      const txHash = await walletClient.writeContract({
+      // Simulated first so a registry refusal surfaces with its real reason
+      // and costs no gas, instead of a mined-but-reverted transaction.
+      const { request } = await publicClient.simulateContract({
         address: reputation,
         abi: REPUTATION_ABI,
         functionName: 'giveFeedback',
         args: [BigInt(agentId), BigInt(value), valueDecimals, tag1, tag2, endpoint, feedbackURI, feedbackHash],
+        account: walletClient.account,
       });
+      const txHash = await walletClient.writeContract(request);
       await wait(txHash, 'giveFeedback');
       return { txHash };
     },
 
     async revokeFeedback(agentId, index) {
       await verifyRegistries();
-      const txHash = await walletClient.writeContract({
+      const { request } = await publicClient.simulateContract({
         address: reputation,
         abi: REPUTATION_ABI,
         functionName: 'revokeFeedback',
         args: [BigInt(agentId), BigInt(index)],
+        account: walletClient.account,
       });
+      const txHash = await walletClient.writeContract(request);
       await wait(txHash, 'revokeFeedback');
       return { txHash };
     },
