@@ -25,21 +25,39 @@
  *      halflife was configured to accept before anything is signed.
  */
 
-/** Base networks halflife will pay on, by the name used in configuration. */
+/** Networks halflife will pay on, by the name used in configuration. */
 const NETWORKS = Object.freeze({
   base: Object.freeze({
     caip2: 'eip155:8453',
     usdc: '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913',
     label: 'Base mainnet',
     isTestnet: false,
+    // Everywhere except Arc the payer signs an EIP-3009 authorization against
+    // the USDC token itself, which is what the stock scheme already does.
+    signsAgainstGateway: false,
   }),
   'base-sepolia': Object.freeze({
     caip2: 'eip155:84532',
     usdc: '0x036cbd53842c5426634e7929541ec2318f3dcf7e',
     label: 'Base Sepolia',
     isTestnet: true,
+    signsAgainstGateway: false,
+  }),
+  arc: Object.freeze({
+    caip2: 'eip155:5042',
+    usdc: '0x3600000000000000000000000000000000000000',
+    label: 'Arc mainnet',
+    isTestnet: false,
+    // Arc settles through Circle, which verifies the signature against its
+    // GatewayWalletBatched contract rather than the token. The stock scheme
+    // signs against the asset and is rejected as "unsupported_scheme", so this
+    // network needs the hand-built scheme further down this file.
+    signsAgainstGateway: true,
   }),
 });
+
+/** Arc's chain id, for the EIP-712 domain the Gateway scheme builds. */
+const ARC_CHAIN_ID = 5042;
 
 /** What one re-certification costs, in whole USDC. StressProof's published price. */
 export const RECERTIFICATION_PRICE_USDC = '0.005';
@@ -136,6 +154,7 @@ export function resolvePaidConfig(env = process.env) {
     networkLabel: network.label,
     isTestnet: network.isTestnet,
     usdc: network.usdc,
+    signsAgainstGateway: network.signsAgainstGateway,
     priceUsdc: RECERTIFICATION_PRICE_USDC,
     maxUsdc,
     maxAtomic,
@@ -221,6 +240,91 @@ export function formatUsdc(atomic) {
  * every test run whether or not a payment was involved. Nothing in this
  * function is exercised by the test suite, and the honesty table says so.
  */
+/** The EIP-3009 struct Circle's Gateway verifies. */
+const AUTHORIZATION_TYPES = {
+  TransferWithAuthorization: [
+    { name: 'from', type: 'address' },
+    { name: 'to', type: 'address' },
+    { name: 'value', type: 'uint256' },
+    { name: 'validAfter', type: 'uint256' },
+    { name: 'validBefore', type: 'uint256' },
+    { name: 'nonce', type: 'bytes32' },
+  ],
+};
+
+/**
+ * Arc's signer, hand-built because the stock one signs the wrong contract.
+ *
+ * @x402/evm's own exact scheme builds its EIP-712 domain from the ASSET
+ * address. Circle's Arc facilitator publishes a different `verifyingContract`
+ * in the challenge's `extra` (its GatewayWalletBatched) and rejects anything
+ * signed against the token instead. The same workaround is already live in the
+ * browser payer, where it was verified against the real facilitator: the stock
+ * scheme fails, this one settles.
+ *
+ * The shape of `createPaymentPayload` is the one @x402/core's client calls,
+ * checked against the installed library rather than assumed.
+ */
+class GatewayExactScheme {
+  constructor(account, network) {
+    this.scheme = 'exact';
+    this.account = account;
+    this.network = network;
+  }
+
+  async createPaymentPayload(x402Version, requirements) {
+    const { getAddress } = await import('viem');
+    const now = Math.floor(Date.now() / 1000);
+
+    // `validBefore` comes from the window the seller advertised. On Arc that
+    // has to clear Circle's one-week minimum, and a seller that advertises
+    // nothing would otherwise produce an authorization that is refused before
+    // any money moves.
+    if (!requirements.maxTimeoutSeconds) {
+      throw new PaidRunUnavailableError(
+        'the 402 challenge advertised no maxTimeoutSeconds, so the payment window cannot be built. ' +
+          "Arc's settlement refuses an authorization shorter than one week.",
+      );
+    }
+
+    const authorization = {
+      from: this.account.address,
+      to: getAddress(requirements.payTo),
+      value: requirements.amount,
+      validAfter: '0',
+      validBefore: (now + Number(requirements.maxTimeoutSeconds)).toString(),
+      nonce: randomNonce(),
+    };
+
+    const signature = await this.account.signTypedData({
+      domain: {
+        name: requirements.extra?.name,
+        version: requirements.extra?.version,
+        chainId: ARC_CHAIN_ID,
+        verifyingContract: getAddress(requirements.extra?.verifyingContract ?? requirements.asset),
+      },
+      types: AUTHORIZATION_TYPES,
+      primaryType: 'TransferWithAuthorization',
+      message: {
+        from: getAddress(authorization.from),
+        to: getAddress(authorization.to),
+        value: BigInt(authorization.value),
+        validAfter: BigInt(authorization.validAfter),
+        validBefore: BigInt(authorization.validBefore),
+        nonce: authorization.nonce,
+      },
+    });
+
+    return { x402Version, payload: { authorization, signature } };
+  }
+}
+
+/** A fresh 32-byte nonce per authorization, as EIP-3009 requires. */
+function randomNonce() {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  return `0x${Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('')}`;
+}
+
 export async function createX402Payer(config) {
   const [{ x402Client }, { registerExactEvmScheme }, { toClientEvmSigner }, { privateKeyToAccount }] =
     await Promise.all([
@@ -246,10 +350,19 @@ export async function createX402Payer(config) {
   }
 
   const client = new x402Client();
-  registerExactEvmScheme(client, {
-    signer: toClientEvmSigner(account),
-    networks: [config.network],
-  });
+  if (config.signsAgainstGateway) {
+    client.register(config.network, new GatewayExactScheme(account, config.network));
+    // Arc's USDC is not one of the SDK's built-in default assets. Without
+    // this the client refuses the facilitator's own token before the key is
+    // ever asked to sign, which reads as a broken wallet rather than a
+    // missing allow-list entry.
+    client.setSpendControls({ allowedAssets: true });
+  } else {
+    registerExactEvmScheme(client, {
+      signer: toClientEvmSigner(account),
+      networks: [config.network],
+    });
+  }
 
   return {
     address: config.payerAddress,

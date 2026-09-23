@@ -160,6 +160,20 @@ test('a complete environment resolves, and the ceiling defaults to the price', (
   assert.equal(config.maxAtomic, 5000n);
 });
 
+test('Arc resolves to Circle-style signing, and Base does not', () => {
+  const arc = resolvePaidConfig({ ...ENV, HALFLIFE_PAYMENT_NETWORK: 'arc' });
+  assert.equal(arc.ok, true, arc.reason);
+  assert.equal(arc.network, 'eip155:5042');
+  assert.equal(arc.usdc, '0x3600000000000000000000000000000000000000');
+  // The flag that decides which signer is used. Arc must sign against Circle's
+  // Gateway contract; signing against the token is refused as an unsupported
+  // scheme, which costs a run to discover.
+  assert.equal(arc.signsAgainstGateway, true);
+
+  const base = resolvePaidConfig(ENV);
+  assert.equal(base.signsAgainstGateway, false);
+});
+
 test('an unknown network is refused rather than guessed at', () => {
   const config = resolvePaidConfig({ ...ENV, HALFLIFE_PAYMENT_NETWORK: 'ethereum' });
   assert.equal(config.ok, false);
