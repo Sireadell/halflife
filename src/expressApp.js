@@ -490,20 +490,31 @@ export function createApp({
       });
       await arcDemoResultStore.write(latest);
 
+      // A run that never reached StressProof measured nothing, and the visitor
+      // paid for it anyway. Reporting `checked: true` there would be the exact
+      // silent failure this product exists to catch, so what the visitor
+      // actually got is said plainly instead.
+      const measured = Boolean(result.measured);
+      const arcWritten = Boolean(result.arc?.written);
+
       res.json({
         ok: true,
         charged: true,
-        checked: true,
-        arcWritten: Boolean(result.arc?.written),
-        summary: result.arc?.written
-          ? 'Paid Arc demo completed. The visitor paid, Halflife ran the check, and Halflife wrote the result to Arc.'
-          : `Paid Arc demo completed. The visitor paid and Halflife ran the check, but no new Arc write was needed: ${result.arc?.reason ?? 'the stored certificate did not need to change'}.`,
+        checked: measured,
+        arcWritten,
+        summary: !measured
+          ? `The visitor paid, but Halflife could not run the check: ${result.unmeasurableReason ?? 'the run could not be measured'}. Nothing was measured, and the stored certificate is left exactly as it was.`
+          : arcWritten
+            ? 'Paid Arc demo completed. The visitor paid, Halflife ran the check, and Halflife wrote the result to Arc.'
+            : `Paid Arc demo completed. The visitor paid and Halflife ran the check, but no new Arc write was needed: ${result.arc?.reason ?? 'the stored certificate did not need to change'}.`,
         paid: true,
         payment,
         target: result.target,
         agentAddress: req.paidArcDemo.agentAddress,
         checkedAt: result.checkedAt,
         measured: result.measured,
+        upstreamReached: result.upstreamReached,
+        unmeasurableReason: result.unmeasurableReason,
         standing: result.standing,
         standingReason: result.standingReason,
         currentVerdict: result.currentVerdict,

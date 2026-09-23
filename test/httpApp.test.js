@@ -505,6 +505,82 @@ test('the paid Arc demo charges, certifies and returns Arc proof', async () => {
   );
 });
 
+test('a paid run that could not reach StressProof says so instead of claiming it checked', async () => {
+  const paidArcDemoGate = {
+    mode: 'live',
+    enabled: true,
+    config: {
+      network: 'eip155:5042',
+      priceUsdc: '0.10',
+      payTo: '0xb3FB14FEcac09efbD0C74Fc07d50d7eD1eef2B53',
+    },
+    middleware: (_req, _res, next) => next(),
+    reason: null,
+  };
+
+  // The shape certifyOnArc returns when the visitor's money moved but the
+  // upstream never ran: measured false, and no Arc write because nothing was
+  // measured to write about.
+  const certifyOnArcFn = async () => ({
+    target: 'https://agent.example/v1/chat',
+    checkedAt: '2026-09-22T12:00:00.000Z',
+    measured: false,
+    upstreamReached: false,
+    unmeasurableReason: 'StressProof could not be reached: HTTP 402: insufficient_funds',
+    standing: STANDING.VALID,
+    standingReason: 'left as it was',
+    currentVerdict: null,
+    previousVerdict: 'RESILIENT',
+    revoked: false,
+    reason: 'the run measured nothing',
+    specVersion: 'sp1-test',
+    current: null,
+    arc: { written: false, reason: 'No Arc write: this run measured nothing' },
+    journalLine: 'could not measure',
+  });
+
+  await withApp(
+    {
+      paidArcDemoGate,
+      arcClients: { fake: true },
+      certifyOnArcFn,
+      arcDemoResultStore: {
+        async read() {
+          return null;
+        },
+        async write(snapshot) {
+          return snapshot;
+        },
+      },
+    },
+    async ({ call }) => {
+      const { status, body } = await call('POST', '/demo/certify/paid', {
+        targetUrl: 'https://agent.example/v1/chat',
+        agentAddress: '0x7a3f19e0b6d4c9a2f0e1b8d3a5c7e9f0b1d2c281',
+        sampleBody: { q: 1 },
+      });
+
+      assert.equal(status, 200);
+      // The money really did move, and that stays true.
+      assert.equal(body.charged, true);
+      assert.equal(body.paid, true);
+      // What must NOT be claimed is that a check happened.
+      assert.equal(body.checked, false);
+      assert.equal(body.measured, false);
+      assert.equal(body.arcWritten, false);
+      assert.equal(body.upstreamReached, false);
+      assert.match(body.unmeasurableReason, /insufficient_funds/);
+      assert.match(body.summary, /could not run the check/);
+      assert.match(body.summary, /insufficient_funds/);
+      assert.doesNotMatch(
+        body.summary,
+        /Halflife ran the check/,
+        'must never say it ran the check when it did not',
+      );
+    },
+  );
+});
+
 test('the latest paid Arc demo endpoint reads the saved proof without running a check', async () => {
   let certifyCalled = false;
   await withApp(

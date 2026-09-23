@@ -334,6 +334,16 @@ function summarizePaidResponse(status, body, headers) {
     };
   }
   if (status >= 200 && status < 300) {
+    // The server answers 200 even when it could not reach StressProof, because
+    // the request itself was handled correctly. Saying "check completed" there
+    // would tell the visitor they got something they did not actually get.
+    if (body && body.measured === false) {
+      return {
+        title: 'Paid, but nothing was checked',
+        body: `The payment went through, but Halflife could not run the check: ${body.unmeasurableReason ?? 'the run could not be measured'}. The certificate is unchanged.`,
+        state: 'bad',
+      };
+    }
     return {
       title: 'Paid check completed',
       body: 'The payment was accepted and Halflife returned a certification result.',
