@@ -27046,6 +27046,20 @@ async function verifyArcProof() {
     setButtonReady("verify-history", "Verify both records");
   }
 }
+async function loadErc8004Proof() {
+  const node = byId("erc8004-proof");
+  if (!node) return;
+  try {
+    const response = await fetch("/demo/certify/paid/latest", { headers: { accept: "application/json" } });
+    if (!response.ok) return;
+    const body = await readJson(response);
+    const proof = body.erc8004 ?? body.arc?.erc8004 ?? null;
+    if (!proof?.agentId || !proof?.txHash) return;
+    node.className = `result ${proof.written ? "ok" : "warn"}`;
+    node.innerHTML = `<strong>ERC-8004 feedback</strong>Agent ${esc(proof.agentId)}. <a href="${ARC_EXPLORER}/tx/${esc(proof.txHash)}" target="_blank" rel="noopener">${esc(shortHash(proof.txHash))}</a>`;
+  } catch {
+  }
+}
 async function payAndRun() {
   setButtonBusy("pay-live", true, "Preparing payment");
   try {
@@ -27080,6 +27094,7 @@ async function payAndRun() {
     const summary = summarizePaidResponse(response.status, body, response.headers);
     setResult("paid-summary", summary.title, summary.body, summary.state);
     showOutput("paid-route-result", JSON.stringify({ status: response.status, payer: walletAddress, body }, null, 2));
+    loadErc8004Proof();
   } catch (error) {
     setResult("paid-summary", "Live payment did not complete", error.message, "bad");
     showOutput("paid-route-result", JSON.stringify({ error: error.message }, null, 2));
@@ -27094,6 +27109,7 @@ function boot() {
   }));
   byId("pay-live").addEventListener("click", payAndRun);
   loadAbout();
+  loadErc8004Proof();
 }
 boot();
 /*! Bundled license information:

@@ -499,7 +499,7 @@ export function createApp({
   app.post('/demo/certify/paid', ...paidArcDemoMiddlewares, async (req, res) => {
     try {
       const result = await certifyOnArcFn(
-        { certifier, arcClients },
+        { certifier, arcClients, memory },
         {
           targetUrl: req.paidArcDemo.targetUrl,
           agentAddress: req.paidArcDemo.agentAddress,
@@ -553,6 +553,7 @@ export function createApp({
         specVersion: result.specVersion,
         reportHash: result.current?.reportHash ?? null,
         arc: result.arc,
+        erc8004: result.arc?.erc8004 ?? null,
         journalLine: result.journalLine,
         latestResult: 'GET /demo/certify/paid/latest',
       });

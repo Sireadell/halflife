@@ -26,6 +26,7 @@ export function buildPaidArcDemoSnapshot({ payment, input, result, savedAt }) {
     specVersion: result.specVersion,
     reportHash: result.current?.reportHash ?? null,
     arc: result.arc,
+    erc8004: result.arc?.erc8004 ?? null,
     journalLine: result.journalLine,
   };
 }

@@ -133,6 +133,34 @@ test('an agent nobody ever certified reads as not_certified, which is not a revo
   });
 });
 
+test('the registry surfaces ERC-8004 proof stored on the certificate record', async () => {
+  await withMemory(async (memory) => {
+    const proof = {
+      agentId: '7',
+      agentRegistry: 'eip155:5042:0x8004A169FB4a3325136EB29fA0ceB6D2e539a432',
+      lastFeedbackIndex: '3',
+      lastFeedbackTxHash: '0xfeedback',
+      lastFeedbackTxUrl: 'https://arc.etherscan.io/tx/0xfeedback',
+    };
+    await memory.rememberCertification('erc8004.example', {
+      target: 'erc8004.example',
+      verdict: 'RESILIENT',
+      score: 94,
+      certificateStatus: 'valid',
+      certifiedAt: '2026-03-01T00:00:00.000Z',
+      qualifiedForRiskLevel: RISK.LOW,
+      reportHash: '0xfeedface',
+      erc8004: proof,
+    });
+
+    const registry = new Registry({ memory, clock: () => '2026-03-02T00:00:00.000Z' });
+    const standing = await registry.standingOf('erc8004.example');
+
+    assert.deepEqual(standing.erc8004, proof);
+    assert.deepEqual(standing.certificate.erc8004, proof);
+  });
+});
+
 test('the registry lists an agent that was registered and never successfully checked', async () => {
   await withMemory(async (memory) => {
     const certifier = new Certifier({

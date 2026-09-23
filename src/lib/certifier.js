@@ -131,6 +131,7 @@ export function normaliseReport(payload) {
     verdictReason: typeof report.verdictReason === 'string' ? report.verdictReason : null,
     reportId: typeof envelope.id === 'string' ? envelope.id : null,
     reportHash: typeof certificate?.reportHash === 'string' ? certificate.reportHash : null,
+    reportUri: reportUriOf(envelope, certificate),
     // An unsigned report is not a failed one. StressProof says so itself: a
     // deployment with no signing key produces sound reports with no
     // certificate. Recorded as a fact rather than silently ignored.
@@ -151,6 +152,7 @@ function unreachedRun(error) {
     verdictReason: null,
     reportId: null,
     reportHash: null,
+    reportUri: null,
     signed: false,
     upstreamReached: false,
     unmeasurableReason: `StressProof could not be reached: ${error.message}`,
@@ -582,7 +584,9 @@ export class Certifier {
       lastCheckFailure: null,
       reportId: current.reportId,
       reportHash: current.reportHash,
+      reportUri: current.reportUri,
       signed: current.signed,
+      erc8004: previous?.erc8004 ?? null,
     });
   }
 }
@@ -655,4 +659,20 @@ function sanitiseCheck(check) {
 
 function numberOrNull(value) {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function reportUriOf(envelope, certificate) {
+  for (const value of [
+    certificate?.uri,
+    certificate?.url,
+    certificate?.permanentUrl,
+    certificate?.certificateUrl,
+    envelope.certificateUri,
+    envelope.certificateUrl,
+    envelope.permanentUrl,
+    envelope.url,
+  ]) {
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return null;
 }

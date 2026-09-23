@@ -162,6 +162,12 @@ consent file naming that wallet.
 visitor pays Halflife first in Arc USDC through x402. Only after that payment
 does Halflife run the certification and write the issue or revoke proof to Arc.
 
+Alongside the existing Arc memo, a measured run writes ERC-8004 reputation
+feedback through Arc's canonical Identity and Reputation registries. When a
+certificate is revoked, Halflife revokes the earlier ERC-8004 feedback before
+writing the lower replacement feedback. An unmeasured run, a run without a
+report hash, or a registry failure never turns into a false on-chain claim.
+
 The route refuses before asking for payment if Arc writing is not configured, or
 if the request is missing the agent URL, Arc wallet address, or sample request
 body. That way nobody is charged for a run Halflife cannot record.
@@ -204,7 +210,7 @@ brand new process recalls what an earlier process wrote. That test is in
 [`test/memory.test.js`](test/memory.test.js) and it is the one test this
 project cannot survive failing.
 
-**132 tests passing.** Counted, not estimated. Run `npm test`.
+**156 tests passing.** Counted, not estimated. Run `npm test`.
 
 The certifier is built and tested. It is in
 [`src/lib/certifier.js`](src/lib/certifier.js) and it is the one operation

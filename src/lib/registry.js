@@ -224,7 +224,9 @@ export class Registry {
             verdictReason: record.verdictReason ?? null,
             reportId: record.reportId ?? null,
             reportHash: record.reportHash ?? null,
+            reportUri: record.reportUri ?? null,
             signed: record.signed ?? false,
+            erc8004: record.erc8004 ?? null,
           }
         : null,
       // The last attempt, successful or not. Reported separately from
@@ -234,6 +236,7 @@ export class Registry {
       lastCheckedAt: record?.lastCheckedAt ?? null,
       lastCheckFailedAt: record?.lastCheckFailedAt ?? null,
       lastCheckFailure: record?.lastCheckFailure ?? null,
+      erc8004: record?.erc8004 ?? null,
     };
   }
 }
