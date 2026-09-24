@@ -13,7 +13,8 @@
   Paid run: memo 0xb94fb2143d6ef5b183986522922bd6946f5ef4c9c314f464cde3257f6b272e9a,
   feedback 0x07cc5131d493a43dcdd35399ab4bd4ad851ea35a044b8aeae43247d6a6ccf880,
   read back from the Reputation Registry as 100 RESILIENT, not revoked.
-- [ ] Add the deployed project link, public repository link, short description and builder profile to the official Arc Microgrants form.
+- [x] Add the deployed project link, public repository link, short description and builder profile to the official Arc Microgrants form.
+  Submitted 2026-09-24 after preview.
 
 ## Submission Description
 
